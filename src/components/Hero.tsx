@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { PhoneCall, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
+import EmergencyModal from './EmergencyModal';
 
 export default function Hero() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-primary-950 to-primary-900 overflow-hidden">
       {/* Background pattern */}
@@ -31,6 +34,7 @@ export default function Hero() {
             </p>
             <div className="mt-8 sm:max-w-lg sm:mx-auto sm:text-center lg:text-left">
               <motion.button
+                onClick={() => setIsModalOpen(true)}
                 className={cn(
                   "inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-full",
                   "text-white bg-primary-500 hover:bg-primary-600",
@@ -73,6 +77,12 @@ export default function Hero() {
           <path d="M456.464 0.0433865C277.158 -1.70575 0 50.0141 0 50.0141V74H1440V50.0141C1440 50.0141 1320.4 31.1925 1243.09 27.0276C1099.33 19.2816 1019.08 53.1981 875.138 50.0141C710.527 46.3727 621.108 1.64949 456.464 0.0433865Z"></path>
         </svg>
       </div>
+
+      {/* Emergency Modal */}
+      <EmergencyModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
     </div>
   );
 }
