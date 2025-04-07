@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Car, Menu, X, ChevronDown } from 'lucide-react';
+import { Car, Menu, X, ChevronDown, Wallet, History } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from './auth/AuthContext';
 import { cn } from '../lib/utils';
 
 const navItems = [
-  { name: 'Services', href: '/#services' },
-  { name: 'How It Works', href: '/#how-it-works' },
-  { name: 'About', href: '/#about' },
-  { name: 'Contact', href: '/#contact' }
+  { name: 'Services', href: '/services' },
+  { name: 'How It Works', href: '/how-it-works' },
+  { name: 'About', href: '/about' },
+  { name: 'Contact', href: '/contact' }
 ];
 
 export default function Navbar() {
@@ -110,6 +110,24 @@ export default function Navbar() {
                   >
                     Dashboard
                   </Link>
+                  <Link
+                    to="/dashboard/payments"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-600"
+                  >
+                    <div className="flex items-center">
+                      <Wallet className="h-4 w-4 mr-2" />
+                      Payments
+                    </div>
+                  </Link>
+                  <Link
+                    to="/dashboard/history"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-600"
+                  >
+                    <div className="flex items-center">
+                      <History className="h-4 w-4 mr-2" />
+                      History
+                    </div>
+                  </Link>
                   <button
                     onClick={handleSignOut}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-600"
@@ -191,6 +209,26 @@ export default function Navbar() {
                     className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors duration-300"
                   >
                     Dashboard
+                  </Link>
+                  <Link
+                    to="/dashboard/payments"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors duration-300"
+                  >
+                    <div className="flex items-center">
+                      <Wallet className="h-4 w-4 mr-2" />
+                      Payments
+                    </div>
+                  </Link>
+                  <Link
+                    to="/dashboard/history"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors duration-300"
+                  >
+                    <div className="flex items-center">
+                      <History className="h-4 w-4 mr-2" />
+                      History
+                    </div>
                   </Link>
                   <button
                     onClick={() => {

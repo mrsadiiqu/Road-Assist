@@ -1,6 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Mail, MapPin, Send } from 'lucide-react';
+import { 
+  Phone, 
+  Mail, 
+  MapPin, 
+  Send, 
+  Clock 
+} from 'lucide-react';
 
 const contactInfo = [
   {
@@ -22,6 +28,12 @@ const contactInfo = [
     title: 'Location',
     value: 'Available nationwide, 24/7',
     color: 'bg-purple-500'
+  },
+  {
+    icon: Clock,
+    title: 'Hours',
+    value: '24/7 Emergency Service',
+    color: 'bg-yellow-500'
   }
 ];
 
@@ -47,19 +59,35 @@ const itemVariants = {
 };
 
 export default function Contact() {
-  return (
-    <section id="contact" className="relative py-20 overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute inset-0 bg-gradient-to-b from-white via-primary-50/30 to-white"></div>
-      <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-primary-50/50 to-transparent"></div>
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Handle form submission
+    console.log('Form submitted:', formData);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  return (
+    <section id="contact" className="py-20 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          className="text-center"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          className="text-center mb-16"
         >
           <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
             Contact Us
@@ -69,123 +97,123 @@ export default function Contact() {
           </p>
         </motion.div>
 
-        <div className="mt-20 grid grid-cols-1 gap-y-16 lg:grid-cols-2 lg:gap-x-12">
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-          >
-            <div className="space-y-8">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-12"
+        >
+          <div>
+            <motion.div
+              variants={itemVariants}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8"
+            >
               {contactInfo.map((info, index) => {
-                const IconComponent = info.icon;
+                const Icon = info.icon;
                 return (
-                  <motion.div
+                  <div
                     key={index}
-                    variants={itemVariants}
-                    className="group"
+                    className="bg-gray-50 rounded-xl p-6"
                   >
-                    <div className="flex items-center p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300">
-                      <div className={`flex-shrink-0 h-12 w-12 ${info.color} rounded-xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300`}>
-                        <IconComponent className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="ml-4">
-                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors duration-300">
-                          {info.title}
-                        </h3>
-                        {info.link ? (
-                          <a
-                            href={info.link}
-                            className="mt-1 text-lg text-gray-600 hover:text-primary-600 transition-colors duration-300"
-                          >
-                            {info.value}
-                          </a>
-                        ) : (
-                          <p className="mt-1 text-lg text-gray-600">{info.value}</p>
-                        )}
-                      </div>
+                    <div className={`${info.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4`}>
+                      <Icon className="h-6 w-6 text-white" />
                     </div>
-                  </motion.div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                      {info.title}
+                    </h3>
+                    {info.link ? (
+                      <a
+                        href={info.link}
+                        className="text-gray-600 hover:text-primary-600 transition-colors duration-300"
+                      >
+                        {info.value}
+                      </a>
+                    ) : (
+                      <p className="text-gray-600">
+                        {info.value}
+                      </p>
+                    )}
+                  </div>
                 );
               })}
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
 
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="bg-white rounded-2xl shadow-xl overflow-hidden"
+            variants={itemVariants}
+            className="bg-gray-50 rounded-xl p-8"
           >
-            <div className="p-8">
-              <form className="space-y-6">
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      id="name"
-                      className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 transition-colors duration-200"
-                      placeholder="John Doe"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      id="email"
-                      className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 transition-colors duration-200"
-                      placeholder="john@example.com"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="subject" className="block text-sm font-medium text-gray-700">
-                    Subject
-                  </label>
-                  <input
-                    type="text"
-                    name="subject"
-                    id="subject"
-                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 transition-colors duration-200"
-                    placeholder="How can we help?"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-gray-700">
-                    Message
-                  </label>
-                  <textarea
-                    id="message"
-                    name="message"
-                    rows={4}
-                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 transition-colors duration-200"
-                    placeholder="Tell us about your situation..."
-                  />
-                </div>
-
-                <motion.button
-                  type="submit"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200"
-                >
-                  Send Message
-                  <Send className="ml-2 h-5 w-5" />
-                </motion.button>
-              </form>
-            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-6">
+              Send us a message
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
+                  Subject
+                </label>
+                <input
+                  type="text"
+                  id="subject"
+                  name="subject"
+                  value={formData.subject}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                  Message
+                </label>
+                <textarea
+                  id="message"
+                  name="message"
+                  value={formData.message}
+                  onChange={handleChange}
+                  required
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+              <button
+                type="submit"
+                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-full text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              >
+                Send Message
+                <Send className="ml-2 h-5 w-5" />
+              </button>
+            </form>
           </motion.div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

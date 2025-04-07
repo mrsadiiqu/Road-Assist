@@ -1,13 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './components/auth/AuthContext';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
+import PageLayout from './components/PageLayout';
 import Hero from './components/Hero';
-import Services from './components/Services';
-import HowItWorks from './components/HowItWorks';
-import About from './components/About';
-import Contact from './components/Contact';
+import Services from './pages/Services';
+import HowItWorks from './pages/HowItWorks';
+import About from './pages/About';
+import Contact from './pages/Contact';
 import SignIn from './components/auth/SignIn';
 import SignUp from './components/auth/SignUp';
 import DashboardLayout from './components/dashboard/DashboardLayout';
@@ -18,17 +17,13 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function LandingPage() {
   return (
-    <>
-      <Navbar />
-      <div className="pt-16">
-        <Hero />
-        <Services />
-        <HowItWorks />
-        <About />
-        <Contact />
-      </div>
-      <Footer />
-    </>
+    <PageLayout>
+      <Hero />
+      <Services />
+      <HowItWorks />
+      <About />
+      <Contact />
+    </PageLayout>
   );
 }
 
@@ -39,8 +34,12 @@ function App() {
         <div className="min-h-screen bg-white">
           <Routes>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/signin" element={<SignIn />} />
-            <Route path="/signup" element={<SignUp />} />
+            <Route path="/services" element={<PageLayout><Services /></PageLayout>} />
+            <Route path="/how-it-works" element={<PageLayout><HowItWorks /></PageLayout>} />
+            <Route path="/about" element={<PageLayout><About /></PageLayout>} />
+            <Route path="/contact" element={<PageLayout><Contact /></PageLayout>} />
+            <Route path="/signin" element={<PageLayout><SignIn /></PageLayout>} />
+            <Route path="/signup" element={<PageLayout><SignUp /></PageLayout>} />
             
             {/* Protected Dashboard Routes */}
             <Route

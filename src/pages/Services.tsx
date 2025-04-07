@@ -73,27 +73,25 @@ const itemVariants = {
 
 export default function Services() {
   return (
-    <section id="services" className="py-20 bg-gray-50">
+    <div className="min-h-screen bg-gray-50 py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          animate={{ opacity: 1, y: 0 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Our Services
-          </h2>
-          <p className="mt-4 text-xl text-gray-600">
-            Professional roadside assistance services available 24/7
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Professional roadside assistance services available 24/7 to get you back on the road quickly and safely.
           </p>
         </motion.div>
 
         <motion.div
           variants={containerVariants}
           initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
+          animate="visible"
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
         >
           {services.map((service, index) => {
@@ -129,8 +127,7 @@ export default function Services() {
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
           className="mt-16 text-center"
         >
@@ -146,6 +143,6 @@ export default function Services() {
           </Link>
         </motion.div>
       </div>
-    </section>
+    </div>
   );
-}
+} 

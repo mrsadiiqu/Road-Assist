@@ -1,6 +1,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Clock, Users, Award } from 'lucide-react';
+import { 
+  Shield, 
+  Clock, 
+  Users, 
+  Award, 
+  MapPin, 
+  PhoneCall 
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const features = [
   {
@@ -29,6 +37,13 @@ const features = [
   }
 ];
 
+const stats = [
+  { name: 'Service Calls', value: '10,000+', icon: PhoneCall },
+  { name: 'Happy Customers', value: '9,500+', icon: Users },
+  { name: 'Service Providers', value: '200+', icon: Shield },
+  { name: 'Cities Covered', value: '50+', icon: MapPin }
+];
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -40,10 +55,10 @@ const containerVariants = {
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, x: -20 },
+  hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
-    x: 0,
+    y: 0,
     transition: {
       duration: 0.5
     }
@@ -52,92 +67,95 @@ const itemVariants = {
 
 export default function About() {
   return (
-    <section id="about" className="relative py-20 overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute inset-0 bg-gradient-to-b from-gray-50 to-white"></div>
-      <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-primary-50 to-transparent"></div>
+    <section id="about" className="py-20 bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
+            About RoadAssist
+          </h2>
+          <p className="mt-4 text-xl text-gray-600">
+            Your trusted partner for roadside assistance
+          </p>
+        </motion.div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="lg:grid lg:grid-cols-2 lg:gap-24 lg:items-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
-              About RoadAssist
-            </h2>
-            <motion.p
-              className="mt-6 text-lg text-gray-600 leading-relaxed"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              With over 10 years of experience, RoadAssist has been providing reliable roadside assistance to drivers across the nation. Our commitment to excellence and customer satisfaction has made us the trusted choice for emergency vehicle services.
-            </motion.p>
-            <motion.p
-              className="mt-4 text-lg text-gray-600 leading-relaxed"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              We understand that vehicle breakdowns can be stressful, which is why we strive to provide fast, professional, and friendly service to get you back on the road safely.
-            </motion.p>
-            
-            <motion.div
-              className="mt-12 relative"
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-            >
-              <div className="relative rounded-2xl overflow-hidden shadow-xl">
-                <img
-                  className="w-full h-[400px] object-cover"
-                  src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2340&q=80"
-                  alt="Mechanic working on a car"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
-              </div>
-            </motion.div>
-          </motion.div>
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
+        >
+          {features.map((feature, index) => {
+            const Icon = feature.icon;
+            return (
+              <motion.div
+                key={index}
+                variants={itemVariants}
+                className="bg-white rounded-xl shadow-lg p-6"
+              >
+                <div className={`${feature.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4`}>
+                  <Icon className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  {feature.name}
+                </h3>
+                <p className="text-gray-600">
+                  {feature.description}
+                </p>
+              </motion.div>
+            );
+          })}
+        </motion.div>
 
-          <motion.div
-            className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:mt-0"
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
+        >
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <motion.div
+                key={index}
+                variants={itemVariants}
+                className="text-center"
+              >
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-100 mb-4">
+                  <Icon className="h-8 w-8 text-primary-600" />
+                </div>
+                <h3 className="text-3xl font-bold text-gray-900 mb-2">
+                  {stat.value}
+                </h3>
+                <p className="text-gray-600">
+                  {stat.name}
+                </p>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+          className="text-center"
+        >
+          <Link
+            to="/dashboard/request"
+            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-full text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
           >
-            {features.map((feature) => {
-              const IconComponent = feature.icon;
-              return (
-                <motion.div
-                  key={feature.name}
-                  variants={itemVariants}
-                  className="relative group"
-                >
-                  <div className="flex items-center space-x-4 p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <div className={`flex-shrink-0 h-12 w-12 ${feature.color} rounded-xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300`}>
-                      <IconComponent className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors duration-300">
-                        {feature.name}
-                      </h3>
-                      <p className="mt-2 text-base text-gray-500">
-                        {feature.description}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        </div>
+            Get Emergency Help
+            <PhoneCall className="ml-2 h-5 w-5" />
+          </Link>
+        </motion.div>
       </div>
     </section>
   );
