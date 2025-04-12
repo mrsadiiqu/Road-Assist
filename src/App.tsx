@@ -22,6 +22,7 @@ import AdminPayments from './components/admin/AdminPayments';
 import AdminSettings from './components/admin/AdminSettings';
 import AdminSupport from './components/admin/AdminSupport';
 import Footer from './components/Footer';
+import ProviderOnboarding from './components/provider/ProviderOnboarding';
 
 function LandingPage() {
   return (
@@ -73,6 +74,9 @@ function App() {
               <Route path="settings" element={<AdminSettings />} />
               <Route path="support" element={<AdminSupport />} />
             </Route>
+            
+            {/* Provider Routes */}
+            <Route path="/provider/onboarding" element={<PageLayout><ProviderOnboarding /></PageLayout>} />
           </Routes>
         </div>
       </AuthProvider>
