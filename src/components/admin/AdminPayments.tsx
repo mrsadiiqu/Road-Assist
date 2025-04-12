@@ -1,30 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Search, Download } from 'lucide-react';
+import { DollarSign, Calendar, Download, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function AdminPayments() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState('week');
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchPayments();
-  }, []);
+  }, [dateRange]);
 
   async function fetchPayments() {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('payments')
         .select(`
           *,
           service_requests (
-            id,
             service_type,
-            user_profiles (full_name, phone)
+            user_profiles (
+              full_name
+            ),
+            service_providers (
+              business_name
+            )
           )
         `)
         .order('created_at', { ascending: false });
 
+      if (dateRange === 'week') {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        query = query.gte('created_at', weekAgo.toISOString());
+      } else if (dateRange === 'month') {
+        const monthAgo = new Date();
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        query = query.gte('created_at', monthAgo.toISOString());
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setPayments(data || []);
     } catch (error) {
@@ -35,127 +51,94 @@ export default function AdminPayments() {
   }
 
   const filteredPayments = payments.filter(payment => 
-    payment.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    payment.service_requests?.user_profiles?.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+    payment.service_requests?.user_profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    payment.service_requests?.service_providers?.business_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const exportPayments = () => {
-    const csv = [
-      ['Date', 'Reference', 'Customer', 'Amount', 'Status'].join(','),
-      ...filteredPayments.map(payment => [
-        new Date(payment.created_at).toLocaleDateString(),
-        payment.reference,
-        payment.service_requests?.user_profiles?.full_name,
-        payment.amount,
-        payment.status
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `payments-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  };
+  const totalAmount = filteredPayments.reduce((sum, payment) => sum + payment.amount, 0);
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Payments</h1>
-        <div className="flex space-x-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <input
-              type="text"
-              placeholder="Search payments..."
-              className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button
-            onClick={exportPayments}
-            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+        <div className="flex items-center space-x-4">
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="rounded-lg border-gray-300"
           >
-            <Download className="h-5 w-5 mr-2" />
-            Export CSV
+            <option value="all">All Time</option>
+            <option value="week">Last 7 Days</option>
+            <option value="month">Last 30 Days</option>
+          </select>
+          <button className="flex items-center px-4 py-2 bg-gray-100 rounded-lg">
+            <Download className="h-4 w-4 mr-2" />
+            Export
           </button>
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Total Revenue</p>
+              <p className="text-2xl font-bold">₦{totalAmount}</p>
+            </div>
+            <DollarSign className="h-8 w-8 text-green-600" />
+          </div>
         </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Reference
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Service
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredPayments.map((payment) => (
-                <tr key={payment.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(payment.created_at).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {payment.reference}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm">
+        <div className="p-4 border-b">
+          <div className="flex items-center">
+            <Search className="h-5 w-5 text-gray-400 mr-2" />
+            <input
+              type="text"
+              placeholder="Search by user or provider..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full border-none focus:ring-0"
+            />
+          </div>
+        </div>
+
+        <div className="divide-y">
+          {loading ? (
+            <div className="p-4 text-center">Loading...</div>
+          ) : (
+            filteredPayments.map(payment => (
+              <div key={payment.id} className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium">
                       {payment.service_requests?.user_profiles?.full_name}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {payment.service_requests?.user_profiles?.phone}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {payment.service_requests?.service_type}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    ₦{payment.amount.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      payment.status === 'success' 
-                        ? 'bg-green-100 text-green-800'
-                        : payment.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {payment.service_requests?.service_type}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Provider: {payment.service_requests?.service_providers?.business_name}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">₦{payment.amount}</p>
+                    <p className="text-sm text-gray-600">
+                      {new Date(payment.created_at).toLocaleDateString()}
+                    </p>
+                    <span className={`text-sm ${
+                      payment.status === 'completed' ? 'text-green-600' : 'text-yellow-600'
                     }`}>
                       {payment.status}
                     </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

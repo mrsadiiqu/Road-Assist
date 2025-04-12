@@ -18,6 +18,10 @@ import AdminLayout from './components/admin/AdminLayout';
 import ServiceProviders from './components/admin/ServiceProviders';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ServiceRequests from './components/admin/ServiceRequests';
+import AdminPayments from './components/admin/AdminPayments';
+import AdminSettings from './components/admin/AdminSettings';
+import AdminSupport from './components/admin/AdminSupport';
+import Footer from './components/Footer';
 
 function LandingPage() {
   return (
@@ -27,6 +31,7 @@ function LandingPage() {
       <HowItWorks />
       <About />
       <Contact />
+      <Footer/>
     </PageLayout>
   );
 }

@@ -1,19 +1,11 @@
 import React from 'react';
-import Navbar from './Navbar';
-import Footer from './Footer';
+import Navbar from './common/Navbar';
 
-interface PageLayoutProps {
-  children: React.ReactNode;
-}
-
-export default function PageLayout({ children }: PageLayoutProps) {
+export default function PageLayout({ children }) {
   return (
-    <>
+    <div className="min-h-screen">
       <Navbar />
-      <main className="min-h-screen pt-16">
-        {children}
-      </main>
-      <Footer />
-    </>
+      <main>{children}</main>
+    </div>
   );
-} 
+}

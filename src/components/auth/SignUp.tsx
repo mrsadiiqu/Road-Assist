@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Car, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { cn } from '../../lib/utils';
+import Footer from '../Footer';
 
 export default function SignUp() {
   const [email, setEmail] = useState('');
@@ -36,7 +37,8 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+  <>
+      <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -214,7 +216,7 @@ export default function SignUp() {
               >
                 <img
                   className="h-5 w-5"
-                  src="https://www.svgrepo.com/show/448234/facebook.svg"
+                  src="https://www.svgrepo.com/show/475655/facebook-color.svg"
                   alt="Facebook"
                 />
                 <span className="ml-2">Facebook</span>
@@ -224,5 +226,7 @@ export default function SignUp() {
         </div>
       </motion.div>
     </div>
+      <Footer/>
+  </>
   );
 }
