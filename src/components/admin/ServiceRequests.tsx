@@ -1,129 +1,138 @@
 import React, { useState, useEffect } from 'react';
+import { Clock, MapPin, User, Phone } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function ServiceRequests() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    async function fetchRequests() {
-      try {
-        const { data, error } = await supabase
-          .from('service_requests')
-          .select(`
-            *,
-            user_profiles(full_name, phone),
-            service_providers(name, phone)
-          `)
-          .order('created_at', { ascending: false });
+    fetchServiceRequests();
+  }, [filter]);
 
-        if (error) throw error;
-        setRequests(data || []);
-      } catch (error) {
-        console.error('Error fetching requests:', error);
-      } finally {
-        setLoading(false);
+  async function fetchServiceRequests() {
+    try {
+      let query = supabase
+        .from('service_requests')
+        .select(`
+          *,
+          user_profiles (
+            full_name,
+            phone
+          ),
+          service_providers (
+            business_name,
+            phone
+          ),
+          payments (
+            amount,
+            status
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (filter !== 'all') {
+        query = query.eq('status', filter);
       }
-    }
 
-    fetchRequests();
-  }, []);
+      const { data, error } = await query;
+      if (error) throw error;
+      setRequests(data || []);
+    } catch (error) {
+      console.error('Error fetching requests:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Service Requests</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Service Requests</h1>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="rounded-lg border-gray-300"
+        >
+          <option value="all">All Requests</option>
+          <option value="pending">Pending</option>
+          <option value="accepted">Accepted</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
 
-      {loading ? (
-        <div className="flex justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Service Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Provider
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created At
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {requests.map((request) => (
-                <tr key={request.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {request.id.slice(0, 8)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {request.user_profiles?.full_name}
+      <div className="bg-white rounded-lg shadow-sm">
+        {loading ? (
+          <div className="p-4 text-center">Loading...</div>
+        ) : (
+          <div className="divide-y">
+            {requests.map(request => (
+              <div key={request.id} className="p-4">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-medium">{request.service_type}</h3>
+                    <p className="text-sm text-gray-600">
+                      {new Date(request.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <span className={`px-2 py-1 rounded-full text-sm ${
+                    request.status === 'completed' ? 'bg-green-100 text-green-800' :
+                    request.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                    request.status === 'accepted' ? 'bg-blue-100 text-blue-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {request.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <User className="h-4 w-4 mr-2 text-gray-400" />
+                      <span>{request.user_profiles?.full_name}</span>
                     </div>
-                    <div className="text-sm text-gray-500">
-                      {request.user_profiles?.phone}
+                    <div className="flex items-center">
+                      <Phone className="h-4 w-4 mr-2 text-gray-400" />
+                      <span>{request.user_profiles?.phone}</span>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {request.service_type}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(request.status)}`}>
-                      {request.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {request.service_providers ? (
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {request.service_providers.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {request.service_providers.phone}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-500">Not assigned</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(request.created_at).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                      <span>{request.location?.description}</span>
+                    </div>
+                  </div>
+
+                  {request.service_providers && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Provider</h4>
+                      <p>{request.service_providers.business_name}</p>
+                      <p className="text-sm text-gray-600">
+                        {request.service_providers.phone}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {request.payments?.[0] && (
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Payment Status</span>
+                      <span className={`font-medium ${
+                        request.payments[0].status === 'completed' 
+                          ? 'text-green-600' 
+                          : 'text-yellow-600'
+                      }`}>
+                        ₦{request.payments[0].amount} • {request.payments[0].status}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
-}
-
-function getStatusColor(status: string) {
-  switch (status) {
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'accepted':
-      return 'bg-blue-100 text-blue-800';
-    case 'in_progress':
-      return 'bg-purple-100 text-purple-800';
-    case 'completed':
-      return 'bg-green-100 text-green-800';
-    case 'cancelled':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
 }

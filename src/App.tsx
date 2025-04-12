@@ -16,6 +16,8 @@ import Settings from './components/dashboard/Settings';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminLayout from './components/admin/AdminLayout';
 import ServiceProviders from './components/admin/ServiceProviders';
+import AdminDashboard from './components/admin/AdminDashboard';
+import ServiceRequests from './components/admin/ServiceRequests';
 
 function LandingPage() {
   return (
