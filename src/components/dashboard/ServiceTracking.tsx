@@ -47,37 +47,69 @@ export default function ServiceTracking() {
   const [activeRequest, setActiveRequest] = useState<ServiceRequest | null>(null);
   const [showPayment, setShowPayment] = useState(false);
 
+  // Update useEffect to fetch real active request
   useEffect(() => {
-    // TODO: Fetch active request from API
-    const mockRequest: ServiceRequest = {
-      id: '1',
-      service_type: 'towing',
-      status: 'accepted',
-      location: {
-        address: 'Wuse Zone 2, Abuja',
-        latitude: 9.0765,
-        longitude: 7.3986
-      },
-      provider: {
-        name: 'John Doe',
-        phone: '+234 123 456 7890',
-        eta: '15 minutes',
-        location: {
-          latitude: 9.0765,
-          longitude: 7.3986
+    const fetchActiveRequest = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('service_requests')
+          .select(`
+            *,
+            service_providers:provider_id (
+              name,
+              phone,
+              latitude,
+              longitude
+            )
+          `)
+          .eq('user_id', user?.id)
+          .not('status', 'in', ['completed', 'cancelled'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (error && error.code !== 'PGRST116') {
+          throw error;
         }
-      },
-      vehicle: {
-        make: 'Toyota',
-        model: 'Camry',
-        year: '2020',
-        color: 'Black'
-      },
-      created_at: new Date().toISOString(),
-      amount: 15000 // Sample amount in Naira
+        
+        if (data) {
+          setActiveRequest({
+            id: data.id,
+            service_type: data.service_type,
+            status: data.status,
+            location: {
+              address: data.location_address,
+              latitude: data.location_latitude,
+              longitude: data.location_longitude
+            },
+            provider: data.service_providers ? {
+              name: data.service_providers.name,
+              phone: data.service_providers.phone,
+              eta: '15 minutes', // This would be calculated based on distance
+              location: {
+                latitude: data.service_providers.latitude,
+                longitude: data.service_providers.longitude
+              }
+            } : undefined,
+            vehicle: {
+              make: data.vehicle_make,
+              model: data.vehicle_model,
+              year: data.vehicle_year,
+              color: data.vehicle_color
+            },
+            created_at: data.created_at,
+            amount: 15000 // This would come from a pricing table or calculation
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching active request:', error);
+      }
     };
-    setActiveRequest(mockRequest);
-  }, []);
+    
+    if (user) {
+      fetchActiveRequest();
+    }
+  }, [user]);
 
   const getStatusColor = (status: ServiceRequest['status']) => {
     switch (status) {
@@ -246,4 +278,4 @@ export default function ServiceTracking() {
       )}
     </div>
   );
-} 
+}

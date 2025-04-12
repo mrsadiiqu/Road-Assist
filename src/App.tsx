@@ -14,6 +14,8 @@ import Overview from './components/dashboard/Overview';
 import ServiceRequest from './components/dashboard/ServiceRequest';
 import Settings from './components/dashboard/Settings';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import AdminLayout from './components/admin/AdminLayout';
+import ServiceProviders from './components/admin/ServiceProviders';
 
 function LandingPage() {
   return (
@@ -53,6 +55,16 @@ function App() {
               <Route index element={<Overview />} />
               <Route path="request" element={<ServiceRequest />} />
               <Route path="settings" element={<Settings />} />
+            </Route>
+            
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="providers" element={<ServiceProviders />} />
+              <Route path="requests" element={<ServiceRequests />} />
+              <Route path="payments" element={<AdminPayments />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="support" element={<AdminSupport />} />
             </Route>
           </Routes>
         </div>

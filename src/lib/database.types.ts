@@ -120,6 +120,79 @@ export interface Database {
           updated_at?: string
         }
       }
+      payments: {
+        Row: {
+          id: string
+          request_id: string
+          amount: number
+          reference: string
+          status: string
+          payment_method: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          amount: number
+          reference: string
+          status: string
+          payment_method: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          amount?: number
+          reference?: string
+          status?: string
+          payment_method?: string
+          created_at?: string
+        }
+      }
+      service_providers: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          phone: string
+          address: string
+          latitude: number
+          longitude: number
+          service_types: string[]
+          rating: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          phone: string
+          address: string
+          latitude: number
+          longitude: number
+          service_types: string[]
+          rating?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          phone?: string
+          address?: string
+          latitude?: number
+          longitude?: number
+          service_types?: string[]
+          rating?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }

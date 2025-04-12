@@ -38,40 +38,68 @@ export default function ServiceProviders() {
   const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // Update the useEffect to fetch real data
   useEffect(() => {
-    // TODO: Fetch service providers from API
-    const mockProviders: ServiceProvider[] = [
-      {
-        id: '1',
-        name: 'John Doe',
-        email: 'john@example.com',
-        phone: '+234 123 456 7890',
-        location: {
-          address: 'Wuse Zone 2, Abuja',
-          latitude: 9.0765,
-          longitude: 7.3986
-        },
-        service_types: ['towing', 'tire_change', 'jump_start'],
-        rating: 4.8,
-        status: 'active',
-        vehicles: [
-          { type: 'Tow Truck', capacity: '3.5 tons' },
-          { type: 'Service Van', capacity: '1 ton' }
-        ]
+    const fetchProviders = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('service_providers')
+          .select('*');
+        
+        if (error) throw error;
+        setProviders(data || []);
+      } catch (error) {
+        console.error('Error fetching service providers:', error);
       }
-    ];
-    setProviders(mockProviders);
+    };
+    
+    fetchProviders();
   }, []);
-
+  
+  // Update the handleAddProvider function
   const handleAddProvider = async (provider: Omit<ServiceProvider, 'id'>) => {
-    // TODO: Add provider to API
-    console.log('Adding provider:', provider);
-    setShowAddModal(false);
+    try {
+      const { data, error } = await supabase
+        .from('service_providers')
+        .insert({
+          name: provider.name,
+          email: provider.email,
+          phone: provider.phone,
+          address: provider.location.address,
+          latitude: provider.location.latitude,
+          longitude: provider.location.longitude,
+          service_types: provider.service_types,
+          status: provider.status,
+          rating: 0 // Default rating for new providers
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setProviders([data, ...providers]);
+      setShowAddModal(false);
+    } catch (error) {
+      console.error('Error adding service provider:', error);
+    }
   };
-
+  
+  // Update the handleUpdateStatus function
   const handleUpdateStatus = async (id: string, status: ServiceProvider['status']) => {
-    // TODO: Update provider status in API
-    console.log('Updating status:', id, status);
+    try {
+      const { error } = await supabase
+        .from('service_providers')
+        .update({ status })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setProviders(providers.map(provider => 
+        provider.id === id ? { ...provider, status } : provider
+      ));
+    } catch (error) {
+      console.error('Error updating provider status:', error);
+    }
   };
 
   return (
@@ -206,4 +234,4 @@ export default function ServiceProviders() {
       )}
     </div>
   );
-} 
+}

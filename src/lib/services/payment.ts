@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase } from '../supabase';
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const PAYSTACK_BASE_URL = 'https://api.paystack.co';
@@ -79,50 +80,71 @@ export async function initializePayment(params: {
   }
 }
 
-export async function verifyPayment(reference: string): Promise<VerifyResponse> {
+// Verify payment with Paystack
+export async function verifyPayment(reference: string) {
   try {
     const response = await axios.get(
-      `${PAYSTACK_BASE_URL}/transaction/verify/${reference}`,
+      `https://api.paystack.co/transaction/verify/${reference}`,
       {
         headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
         }
       }
     );
-
+    
     return response.data;
   } catch (error) {
-    console.error('Payment verification failed:', error);
-    throw new Error('Failed to verify payment');
+    console.error('Error verifying payment:', error);
+    return { status: false };
   }
 }
 
-export async function createPaymentRecord(params: {
+// Create payment record in database
+export async function createPaymentRecord({
+  requestId,
+  amount,
+  reference,
+  status,
+  paymentMethod
+}: {
   requestId: string;
   amount: number;
   reference: string;
   status: string;
   paymentMethod: string;
 }) {
-  try {
-    // TODO: Save payment record to database
-    console.log('Creating payment record:', params);
-  } catch (error) {
-    console.error('Failed to create payment record:', error);
-    throw new Error('Failed to create payment record');
-  }
+  const { data, error } = await supabase
+    .from('payments')
+    .insert({
+      request_id: requestId,
+      amount,
+      reference,
+      status,
+      payment_method: paymentMethod,
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 }
 
-export async function updateRequestStatus(params: {
+// Update service request status
+export async function updateRequestStatus({
+  requestId,
+  status
+}: {
   requestId: string;
   status: string;
 }) {
-  try {
-    // TODO: Update service request status in database
-    console.log('Updating request status:', params);
-  } catch (error) {
-    console.error('Failed to update request status:', error);
-    throw new Error('Failed to update request status');
-  }
-} 
+  const { data, error } = await supabase
+    .from('service_requests')
+    .update({ status })
+    .eq('id', requestId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
