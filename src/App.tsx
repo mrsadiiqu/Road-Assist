@@ -23,6 +23,7 @@ import AdminSettings from './components/admin/AdminSettings';
 import AdminSupport from './components/admin/AdminSupport';
 import Footer from './components/Footer';
 import ProviderOnboarding from './components/provider/ProviderOnboarding';
+import AdminLogin from './components/admin/AdminLogin';
 
 function LandingPage() {
   return (
@@ -41,44 +42,43 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen bg-white">
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/services" element={<PageLayout><Services /></PageLayout>} />
-            <Route path="/how-it-works" element={<PageLayout><HowItWorks /></PageLayout>} />
-            <Route path="/about" element={<PageLayout><About /></PageLayout>} />
-            <Route path="/contact" element={<PageLayout><Contact /></PageLayout>} />
-            <Route path="/signin" element={<PageLayout><SignIn /></PageLayout>} />
-            <Route path="/signup" element={<PageLayout><SignUp /></PageLayout>} />
-            
-            {/* Protected Dashboard Routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Overview />} />
-              <Route path="request" element={<ServiceRequest />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
-            
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="providers" element={<ServiceProviders />} />
-              <Route path="requests" element={<ServiceRequests />} />
-              <Route path="payments" element={<AdminPayments />} />
-              <Route path="settings" element={<AdminSettings />} />
-              <Route path="support" element={<AdminSupport />} />
-            </Route>
-            
-            {/* Provider Routes */}
-            <Route path="/provider/onboarding" element={<PageLayout><ProviderOnboarding /></PageLayout>} />
-          </Routes>
-        </div>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/services" element={<PageLayout><Services /></PageLayout>} />
+          <Route path="/how-it-works" element={<PageLayout><HowItWorks /></PageLayout>} />
+          <Route path="/about" element={<PageLayout><About /></PageLayout>} />
+          <Route path="/contact" element={<PageLayout><Contact /></PageLayout>} />
+          <Route path="/signin" element={<PageLayout><SignIn /></PageLayout>} />
+          <Route path="/signup" element={<PageLayout><SignUp /></PageLayout>} />
+          
+          {/* Protected Dashboard Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Overview />} />
+            <Route path="request" element={<ServiceRequest />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+          
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/*" element={<AdminLayout />}>
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="providers" element={<ServiceProviders />} />
+            <Route path="requests" element={<ServiceRequests />} />
+            <Route path="payments" element={<AdminPayments />} />
+            <Route path="settings" element={<AdminSettings />} />
+            <Route path="support" element={<AdminSupport />} />
+          </Route>
+          
+          {/* Provider Routes */}
+          <Route path="/provider/onboarding" element={<PageLayout><ProviderOnboarding /></PageLayout>} />
+        </Routes>
       </AuthProvider>
     </Router>
   );
