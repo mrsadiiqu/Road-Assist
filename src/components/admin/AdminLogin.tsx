@@ -4,8 +4,15 @@ import { Mail, Lock, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../auth/AuthContext';
 import { cn } from '../../lib/utils';
+import { supabase } from '../../lib/supabase';
+
+// Add to imports
+import { useLocation } from 'react-router-dom';
 
 export default function AdminLogin() {
+  // Add location to get state
+  const location = useLocation();
+  const message = location.state?.message;
   const navigate = useNavigate();
   const { signIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -21,25 +28,75 @@ export default function AdminLogin() {
     setError('');
 
     try {
-      const { data: { user }, error: signInError } = await signIn(credentials.email, credentials.password);
-      
+      // First, sign in the user
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: credentials.email.trim(),
+        password: credentials.password
+      });
+
       if (signInError) throw signInError;
 
-      // Verify if the user has admin role
-      const { data: profile, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('role')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      if (profile?.role !== 'admin') {
-        throw new Error('Unauthorized access');
+      // Check if user has admin role in metadata
+      if (authData.user?.user_metadata?.role !== 'admin') {
+        throw new Error('Access denied. Admin privileges required.');
       }
 
-      navigate('/admin/dashboard');
+      // Store the session data
+      const sessionData = {
+        access_token: authData.session?.access_token,
+        refresh_token: authData.session?.refresh_token,
+        expires_at: authData.session?.expires_at,
+        user: {
+          ...authData.user,
+          role: 'admin'
+        }
+      };
+
+      // Store in localStorage
+      localStorage.setItem('supabase.auth.token', JSON.stringify(sessionData));
+      localStorage.setItem('adminData', JSON.stringify(sessionData));
+
+      // Set the session explicitly
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: authData.session!.access_token,
+        refresh_token: authData.session!.refresh_token
+      });
+
+      if (sessionError) throw sessionError;
+
+      // Force a session refresh
+      const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError) throw refreshError;
+
+      // Update session data with refreshed session
+      if (refreshedSession) {
+        const updatedSessionData = {
+          access_token: refreshedSession.access_token,
+          refresh_token: refreshedSession.refresh_token,
+          expires_at: refreshedSession.expires_at,
+          user: {
+            ...refreshedSession.user,
+            role: 'admin'
+          }
+        };
+
+        // Update localStorage with refreshed session
+        localStorage.setItem('supabase.auth.token', JSON.stringify(updatedSessionData));
+        localStorage.setItem('adminData', JSON.stringify(updatedSessionData));
+      }
+
+      // Navigate to dashboard
+      navigate('/admin/dashboard', { 
+        replace: true,
+        state: { 
+          isAdmin: true,
+          adminId: authData.user.id
+        }
+      });
+
     } catch (err: any) {
+      console.error('Login error:', err);
       setError(err.message || 'Failed to sign in');
     } finally {
       setIsLoading(false);
@@ -53,6 +110,13 @@ export default function AdminLogin() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md w-full space-y-8"
       >
+        {/* Add success message */}
+        {message && (
+          <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg">
+            {message}
+          </div>
+        )}
+        
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Admin Login

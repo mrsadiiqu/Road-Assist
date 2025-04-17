@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './components/auth/AuthContext';
 import PageLayout from './components/PageLayout';
 import Hero from './components/Hero';
@@ -24,6 +24,16 @@ import AdminSupport from './components/admin/AdminSupport';
 import Footer from './components/Footer';
 import ProviderOnboarding from './components/provider/ProviderOnboarding';
 import AdminLogin from './components/admin/AdminLogin';
+import ProviderRegister from './components/provider/ProviderRegister';
+import ProviderLogin from './components/provider/ProviderLogin';
+import AdminRegister from './components/admin/AdminRegister';
+import ProviderLayout from './components/provider/ProviderLayout';
+import ProviderDashboard from './components/provider/ProviderDashboard';
+import ServiceHistory from './components/dashboard/ServiceHistory';
+import ProviderRequests from './components/provider/ProviderRequests';
+import ProviderEarnings from './components/provider/ProviderEarnings';
+import ProviderProfile from './components/provider/ProviderProfile';
+
 
 function LandingPage() {
   return (
@@ -36,6 +46,12 @@ function LandingPage() {
       <Footer/>
     </PageLayout>
   );
+}
+
+// Add this new component for protected admin routes
+function ProtectedAdminRoute({ children }: { children: React.ReactNode }) {
+  const adminData = localStorage.getItem('adminData');
+  return adminData ? children : <Navigate to="/admin/login" />;
 }
 
 function App() {
@@ -62,12 +78,41 @@ function App() {
           >
             <Route index element={<Overview />} />
             <Route path="request" element={<ServiceRequest />} />
+            <Route path="history" element={<ServiceHistory />} />
             <Route path="settings" element={<Settings />} />
           </Route>
           
+          {/* Provider Routes */}
+          <Route path="/provider/register" element={<ProviderRegister />} />
+          <Route path="/provider/login" element={<ProviderLogin />} />
+          <Route path="/provider/onboarding" element={<ProviderOnboarding />} />
+          <Route
+            path="/provider"
+            element={
+              <ProtectedRoute requiredRole="provider">
+                <ProviderLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<ProviderDashboard />} />
+            <Route path="requests" element={<ProviderRequests />} />
+            <Route path="earnings" element={<ProviderEarnings />} />
+            <Route path="profile" element={<ProviderProfile />} />
+          </Route>
+          
           {/* Admin Routes */}
+          <Route path="/admin/register" element={<AdminRegister />} />
           <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/*" element={<AdminLayout />}>
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="providers" element={<ServiceProviders />} />
             <Route path="requests" element={<ServiceRequests />} />
@@ -75,9 +120,6 @@ function App() {
             <Route path="settings" element={<AdminSettings />} />
             <Route path="support" element={<AdminSupport />} />
           </Route>
-          
-          {/* Provider Routes */}
-          <Route path="/provider/onboarding" element={<PageLayout><ProviderOnboarding /></PageLayout>} />
         </Routes>
       </AuthProvider>
     </Router>

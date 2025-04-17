@@ -1,12 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../auth/AuthContext';
+import { useNavigate } from 'react-router-dom'; 
+import { roleManager } from '../../lib/utils/roleManager';
+
 
 interface OnboardingForm {
   fullName: string;
   email: string;
   phone: string;
   businessName: string;
+  address: string;  // Add this line
   serviceTypes: string[];
   vehicleType: string;
   vehiclePlate: string;
@@ -23,6 +28,21 @@ interface OnboardingForm {
 }
 
 export default function ProviderOnboarding() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Add role verification in useEffect
+  useEffect(() => {
+    const verifyProviderAccess = async () => {
+      const role = await roleManager.getCurrentRole();
+      if (role !== 'provider') {
+        navigate('/provider/login');
+        return;
+      }
+    };
+    verifyProviderAccess();
+  }, [navigate]);
+
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<OnboardingForm>({
@@ -30,6 +50,7 @@ export default function ProviderOnboarding() {
     email: '',
     phone: '',
     businessName: '',
+    address: '',  // Add this line
     serviceTypes: [],
     vehicleType: '',
     vehiclePlate: '',
@@ -46,46 +67,70 @@ export default function ProviderOnboarding() {
   });
 
   const handleFileUpload = async (file: File, type: string) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${type}-${Date.now()}.${fileExt}`;
-    const filePath = `provider-documents/${fileName}`;
+    if (!file) return null;
+    
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}/${type}-${Date.now()}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('documents')
-      .upload(filePath, file);
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true // Allow overwriting if file exists
+        });
 
-    if (uploadError) throw uploadError;
-    return filePath;
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('documents')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      throw error;
+    }
   };
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      // Upload documents
-      const documents = await Promise.all([
-        form.documents.license && handleFileUpload(form.documents.license, 'license'),
-        form.documents.insurance && handleFileUpload(form.documents.insurance, 'insurance'),
-        form.documents.vehicleRegistration && handleFileUpload(form.documents.vehicleRegistration, 'registration')
+      if (!user?.id) throw new Error('User not authenticated');
+      
+      // Validate required documents
+      if (!form.documents.license || !form.documents.insurance || !form.documents.vehicleRegistration) {
+        throw new Error('All documents are required');
+      }
+
+      // Upload all documents first
+      const [licenseUrl, insuranceUrl, registrationUrl] = await Promise.all([
+        handleFileUpload(form.documents.license, 'license'),
+        handleFileUpload(form.documents.insurance, 'insurance'),
+        handleFileUpload(form.documents.vehicleRegistration, 'registration')
       ]);
 
-      // Create provider record
+      // Create provider record with document URLs
       const { data, error } = await supabase
         .from('service_providers')
         .insert({
+          user_id: user.id,
+          name: form.fullName,
           full_name: form.fullName,
           email: form.email,
           phone: form.phone,
+          address: form.address,
           business_name: form.businessName,
           service_types: form.serviceTypes,
           vehicle_type: form.vehicleType,
           vehicle_plate: form.vehiclePlate,
-          service_area: form.serviceArea,
           documents: {
-            license: documents[0],
-            insurance: documents[1],
-            vehicle_registration: documents[2]
+            license: licenseUrl,
+            insurance: insuranceUrl,
+            vehicle_registration: registrationUrl
           },
-          status: 'pending_verification'
+          status: 'inactive'  // Changed to match the allowed values
         })
         .select()
         .single();
@@ -101,9 +146,12 @@ export default function ProviderOnboarding() {
           message: `New service provider registration: ${form.businessName}`
         });
 
-      setStep(4); // Success step
+      // Redirect to provider dashboard after successful onboarding
+      navigate('/provider/dashboard');
     } catch (error) {
       console.error('Onboarding error:', error);
+      // Add user feedback for errors
+      alert('Error uploading documents. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -149,6 +197,15 @@ export default function ProviderOnboarding() {
               type="text"
               value={form.fullName}
               onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Address</label>
+            <input
+              type="text"
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
             />
           </div>

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+
 const services = [
   {
     name: 'Towing Service',
@@ -73,7 +74,8 @@ const itemVariants = {
 
 export default function Services() {
   return (
-    <div className="min-h-screen bg-gray-50 py-16">
+  <>
+      <div className="min-h-screen bg-gray-50 py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -144,5 +146,6 @@ export default function Services() {
         </motion.div>
       </div>
     </div>
+  </>
   );
 } 

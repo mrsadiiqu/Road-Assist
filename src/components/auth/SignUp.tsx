@@ -1,17 +1,25 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Car, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
+import { Car, Mail, Lock, User, ArrowRight, Loader2 , Phone, MapPin} from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { cn } from '../../lib/utils';
 import Footer from '../Footer';
+import { supabase } from '../../lib/supabase';
+import { roleManager } from '../../lib/utils/roleManager';
 
 export default function SignUp() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    fullName: '',
+    phone: '',
+    address: ''
+  });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const { signUp } = useAuth();
   const navigate = useNavigate();
 
@@ -19,22 +27,65 @@ export default function SignUp() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setSuccessMessage('');
 
-    if (password !== confirmPassword) {
+    if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setIsLoading(false);
       return;
     }
 
     try {
-      await signUp(email, password);
-      navigate('/dashboard');
-    } catch (err) {
-      setError('Failed to create an account. Please try again.');
+      // 1. Sign up with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            role: 'user',
+            full_name: formData.fullName
+          }
+        }
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // 2. Create user record in users table
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: authData.user.id,
+              full_name: formData.fullName,
+              email: formData.email,
+              phone: formData.phone,
+              address: formData.address
+            }
+          ]);
+
+        if (profileError) throw profileError;
+
+        // 3. Update role using roleManager
+        await roleManager.updateRole('user');
+
+        setSuccessMessage('Account created successfully! Please check your email for verification link.');
+        setError('');
+
+        // Store user data for later use
+        localStorage.setItem('pendingUserData', JSON.stringify({
+          full_name: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address
+        }));
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to create an account. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  };
+};
 
   return (
   <>
@@ -81,7 +132,43 @@ export default function SignUp() {
                 {error}
               </motion.div>
             )}
+            {successMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg text-sm"
+              >
+                {successMessage}
+              </motion.div>
+            )}
 
+            <div>
+              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="fullName"
+                  name="fullName"
+                  type="text"
+                  required
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                  className={cn(
+                    "block w-full pl-10 pr-3 py-2 border rounded-lg",
+                    "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500",
+                    "text-gray-900 placeholder-gray-400",
+                    "transition-colors duration-200"
+                  )}
+                  placeholder="John Doe"
+                />
+              </div>
+            </div>
+
+            {/* Email field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address
@@ -96,8 +183,8 @@ export default function SignUp() {
                   type="email"
                   autoComplete="email"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
                   className={cn(
                     "block w-full pl-10 pr-3 py-2 border rounded-lg",
                     "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500",
@@ -105,6 +192,58 @@ export default function SignUp() {
                     "transition-colors duration-200"
                   )}
                   placeholder="you@example.com"
+                />
+              </div>
+            </div>
+
+            {/* Phone field */}
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                Phone Number
+              </label>
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  className={cn(
+                    "block w-full pl-10 pr-3 py-2 border rounded-lg",
+                    "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500",
+                    "text-gray-900 placeholder-gray-400",
+                    "transition-colors duration-200"
+                  )}
+                  placeholder="+1234567890"
+                />
+              </div>
+            </div>
+
+            {/* Address field */}
+            <div>
+              <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                Address
+              </label>
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MapPin className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="address"
+                  name="address"
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  className={cn(
+                    "block w-full pl-10 pr-3 py-2 border rounded-lg",
+                    "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500",
+                    "text-gray-900 placeholder-gray-400",
+                    "transition-colors duration-200"
+                  )}
+                  placeholder="Your address"
                 />
               </div>
             </div>
@@ -123,8 +262,8 @@ export default function SignUp() {
                   type="password"
                   autoComplete="new-password"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
                   className={cn(
                     "block w-full pl-10 pr-3 py-2 border rounded-lg",
                     "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500",
@@ -150,8 +289,8 @@ export default function SignUp() {
                   type="password"
                   autoComplete="new-password"
                   required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                   className={cn(
                     "block w-full pl-10 pr-3 py-2 border rounded-lg",
                     "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500",

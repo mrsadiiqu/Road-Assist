@@ -7,12 +7,20 @@ import {
   Car, 
   Settings, 
   Bell,
-  LogOut
+  LogOut,
+  Users,
+  DollarSign,
+  User
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../auth/AuthContext';
+import { UserRole } from '../../lib/utils/roleManager';
 
-const sidebarItems = [
+interface DashboardSidebarProps {
+  userRole: UserRole;
+}
+
+const userSidebarItems = [
   { 
     name: 'Overview', 
     icon: LayoutDashboard, 
@@ -40,9 +48,70 @@ const sidebarItems = [
   }
 ];
 
-export default function DashboardSidebar() {
+const providerSidebarItems = [
+  { 
+    name: 'Dashboard', 
+    icon: LayoutDashboard, 
+    path: '/provider/dashboard' 
+  },
+  { 
+    name: 'Service Requests', 
+    icon: Car, 
+    path: '/provider/requests' 
+  },
+  { 
+    name: 'Earnings', 
+    icon: DollarSign, 
+    path: '/provider/earnings' 
+  },
+  { 
+    name: 'Profile', 
+    icon: User, 
+    path: '/provider/profile' 
+  }
+];
+
+const adminSidebarItems = [
+  { 
+    name: 'Dashboard', 
+    icon: LayoutDashboard, 
+    path: '/admin/dashboard' 
+  },
+  { 
+    name: 'Providers', 
+    icon: Users, 
+    path: '/admin/providers' 
+  },
+  { 
+    name: 'Service Requests', 
+    icon: Car, 
+    path: '/admin/requests' 
+  },
+  { 
+    name: 'Settings', 
+    icon: Settings, 
+    path: '/admin/settings' 
+  }
+];
+
+export default function DashboardSidebar({ userRole }: DashboardSidebarProps) {
   const location = useLocation();
   const { signOut } = useAuth();
+
+  const getSidebarItems = () => {
+    switch (userRole) {
+      case 'admin':
+        return adminSidebarItems;
+      case 'provider':
+        return providerSidebarItems;
+      case 'user':
+        return userSidebarItems;
+      default:
+        return [];
+    }
+  };
+
+  const sidebarItems = getSidebarItems();
 
   return (
     <div className="w-64 min-h-screen bg-white border-r border-gray-200">
