@@ -37,11 +37,6 @@ const userSidebarItems = [
     path: '/dashboard/history' 
   },
   { 
-    name: 'Notifications', 
-    icon: Bell, 
-    path: '/dashboard/notifications' 
-  },
-  { 
     name: 'Settings', 
     icon: Settings, 
     path: '/dashboard/settings' 
