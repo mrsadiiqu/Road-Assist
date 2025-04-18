@@ -1,160 +1,273 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Car, User, Phone, Heart, Plus, Trash2, Save } from 'lucide-react';
-import { useAppStore } from '../../lib/store';
+import { User, Mail, Phone, MapPin, Car, Save, Loader2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { supabase } from '../../lib/supabase';
+
+interface UserProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_year: string;
+  vehicle_color: string;
+}
 
 export default function Settings() {
   const { user } = useAuth();
-  const { 
-    userProfile,
-    userVehicles,
-    fetchUserProfile,
-    fetchUserVehicles,
-    updateUserProfile,
-    addUserVehicle,
-    deleteUserVehicle,
-    isLoading,
-    error 
-  } = useAppStore();
-
-  const [profile, setProfile] = useState({
+  const [profile, setProfile] = useState<UserProfile>({
+    id: '',
     full_name: '',
+    email: '',
     phone: '',
-    emergency_contact_name: '',
-    emergency_contact_phone: ''
+    address: '',
+    vehicle_make: '',
+    vehicle_model: '',
+    vehicle_year: '',
+    vehicle_color: ''
   });
-
-  const [newVehicle, setNewVehicle] = useState({
-    make: '',
-    model: '',
-    year: '',
-    color: '',
-    license_plate: ''
-  });
-
-  const [showAddVehicle, setShowAddVehicle] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    fetchUserProfile();
-    fetchUserVehicles();
-  }, [fetchUserProfile, fetchUserVehicles]);
+    fetchProfile();
+  }, []);
 
-  useEffect(() => {
-    if (userProfile) {
-      setProfile({
-        full_name: userProfile.full_name || '',
-        phone: userProfile.phone || '',
-        emergency_contact_name: userProfile.emergency_contact_name || '',
-        emergency_contact_phone: userProfile.emergency_contact_phone || ''
-      });
+  const fetchProfile = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setProfile(data);
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+      setError('Failed to fetch profile');
+    } finally {
+      setLoading(false);
     }
-  }, [userProfile]);
+  };
 
-  const handleProfileSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
     try {
-      await updateUserProfile({
-        id: user.id,
-        ...profile
-      });
+      setSaving(true);
+      setError('');
+      setSuccess('');
+
+      const { error } = await supabase
+        .from('users')
+        .update({
+          full_name: profile.full_name,
+          phone: profile.phone,
+          address: profile.address,
+          vehicle_make: profile.vehicle_make,
+          vehicle_model: profile.vehicle_model,
+          vehicle_year: profile.vehicle_year,
+          vehicle_color: profile.vehicle_color
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setSuccess('Profile updated successfully');
     } catch (err) {
       console.error('Error updating profile:', err);
+      setError('Failed to update profile');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleAddVehicle = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
-    try {
-      await addUserVehicle({
-        user_id: user.id,
-        ...newVehicle
-      });
-      setNewVehicle({ make: '', model: '', year: '', color: '', license_plate: '' });
-      setShowAddVehicle(false);
-    } catch (err) {
-      console.error('Error adding vehicle:', err);
-    }
-  };
-
-  const handleDeleteVehicle = async (id: string) => {
-    try {
-      await deleteUserVehicle(id);
-    } catch (err) {
-      console.error('Error deleting vehicle:', err);
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+      </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-
-      {/* Profile Section */}
-      <motion.section
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-lg shadow-sm p-6"
+        className="bg-white rounded-xl shadow-sm p-6"
       >
-        <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
-          <User className="h-5 w-5 mr-2 text-primary-600" />
-          Profile Information
-        </h2>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg text-sm">
+              {success}
+            </div>
+          )}
 
-        <form onSubmit={handleProfileSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Full Name</label>
-              <input
-                type="text"
-                value={profile.full_name}
-                onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={profile.full_name}
+                  onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  required
+                />
+              </div>
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-              <input
-                type="tel"
-                value={profile.phone}
-                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="email"
+                  value={profile.email}
+                  disabled
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="tel"
+                  value={profile.phone}
+                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Address
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MapPin className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={profile.address}
+                  onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  required
+                />
+              </div>
             </div>
           </div>
 
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center">
-              <Heart className="h-4 w-4 mr-2 text-red-500" />
-              Emergency Contact
-            </h3>
+          <div className="border-t border-gray-200 pt-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Vehicle Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Contact Name</label>
-                <input
-                  type="text"
-                  value={profile.emergency_contact_name}
-                  onChange={(e) => setProfile({ ...profile, emergency_contact_name: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vehicle Make
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Car className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={profile.vehicle_make}
+                    onChange={(e) => setProfile({ ...profile, vehicle_make: e.target.value })}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700">Contact Phone</label>
-                <input
-                  type="tel"
-                  value={profile.emergency_contact_phone}
-                  onChange={(e) => setProfile({ ...profile, emergency_contact_phone: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vehicle Model
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Car className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={profile.vehicle_model}
+                    onChange={(e) => setProfile({ ...profile, vehicle_model: e.target.value })}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vehicle Year
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Car className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={profile.vehicle_year}
+                    onChange={(e) => setProfile({ ...profile, vehicle_year: e.target.value })}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vehicle Color
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Car className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={profile.vehicle_color}
+                    onChange={(e) => setProfile({ ...profile, vehicle_color: e.target.value })}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -162,118 +275,19 @@ export default function Settings() {
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={isLoading}
-              className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+              disabled={saving}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
             >
-              <Save className="h-4 w-4 mr-2" />
+              {saving ? (
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              ) : (
+                <Save className="h-5 w-5 mr-2" />
+              )}
               Save Changes
             </button>
           </div>
         </form>
-      </motion.section>
-
-      {/* Vehicles Section */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="bg-white rounded-lg shadow-sm p-6"
-      >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-            <Car className="h-5 w-5 mr-2 text-primary-600" />
-            My Vehicles
-          </h2>
-          <button
-            onClick={() => setShowAddVehicle(!showAddVehicle)}
-            className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Vehicle
-          </button>
-        </div>
-
-        {showAddVehicle && (
-          <form onSubmit={handleAddVehicle} className="mb-8 p-4 bg-gray-50 rounded-lg">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <input
-                type="text"
-                placeholder="Make"
-                value={newVehicle.make}
-                onChange={(e) => setNewVehicle({ ...newVehicle, make: e.target.value })}
-                className="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              />
-              <input
-                type="text"
-                placeholder="Model"
-                value={newVehicle.model}
-                onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
-                className="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              />
-              <input
-                type="text"
-                placeholder="Year"
-                value={newVehicle.year}
-                onChange={(e) => setNewVehicle({ ...newVehicle, year: e.target.value })}
-                className="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              />
-              <input
-                type="text"
-                placeholder="Color"
-                value={newVehicle.color}
-                onChange={(e) => setNewVehicle({ ...newVehicle, color: e.target.value })}
-                className="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              />
-              <input
-                type="text"
-                placeholder="License Plate (Optional)"
-                value={newVehicle.license_plate}
-                onChange={(e) => setNewVehicle({ ...newVehicle, license_plate: e.target.value })}
-                className="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-              />
-              <div className="flex items-end">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
-                >
-                  Add Vehicle
-                </button>
-              </div>
-            </div>
-          </form>
-        )}
-
-        <div className="space-y-4">
-          {userVehicles.map((vehicle) => (
-            <motion.div
-              key={vehicle.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors duration-200"
-            >
-              <div className="flex items-center">
-                <Car className="h-5 w-5 text-gray-500 mr-3" />
-                <div>
-                  <p className="font-medium text-gray-900">
-                    {vehicle.make} {vehicle.model}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {vehicle.year} • {vehicle.color}
-                    {vehicle.license_plate && ` • ${vehicle.license_plate}`}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => handleDeleteVehicle(vehicle.id)}
-                className="p-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
-              >
-                <Trash2 className="h-5 w-5" />
-              </button>
-            </motion.div>
-          ))}
-        </div>
-      </motion.section>
+      </motion.div>
     </div>
   );
 }

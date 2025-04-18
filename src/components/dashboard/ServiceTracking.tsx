@@ -8,107 +8,80 @@ import {
   Phone, 
   CheckCircle2, 
   AlertCircle,
-  Loader2,
   CreditCard
 } from 'lucide-react';
 import { useAppStore } from '../../lib/store';
+import { useAuth } from '../auth/AuthContext';
+import { supabase } from '../../lib/supabase';
 import PaymentForm from '../payment/PaymentForm';
 
 interface ServiceRequest {
   id: string;
   service_type: string;
   status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' | 'paid';
-  location: {
-    address: string;
-    latitude: number;
-    longitude: number;
-  };
+  location_address: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_year: string;
+  vehicle_color: string;
+  created_at: string;
+  amount?: number;
   provider?: {
     name: string;
     phone: string;
     eta: string;
-    location: {
-      latitude: number;
-      longitude: number;
-    };
   };
-  vehicle: {
-    make: string;
-    model: string;
-    year: string;
-    color: string;
-  };
-  created_at: string;
-  amount?: number;
 }
 
 export default function ServiceTracking() {
-  const { isLoading, error } = useAppStore();
+  const { user } = useAuth();
   const [activeRequest, setActiveRequest] = useState<ServiceRequest | null>(null);
   const [showPayment, setShowPayment] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Update useEffect to fetch real active request
   useEffect(() => {
     const fetchActiveRequest = async () => {
+      if (!user) return;
+      
       try {
+        setIsLoading(true);
         const { data, error } = await supabase
           .from('service_requests')
           .select(`
             *,
             service_providers:provider_id (
               name,
-              phone,
-              latitude,
-              longitude
+              phone
             )
           `)
-          .eq('user_id', user?.id)
+          .eq('user_id', user.id)
           .not('status', 'in', ['completed', 'cancelled'])
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
         
-        if (error && error.code !== 'PGRST116') {
-          throw error;
-        }
+        if (error) throw error;
         
         if (data) {
           setActiveRequest({
-            id: data.id,
-            service_type: data.service_type,
-            status: data.status,
-            location: {
-              address: data.location_address,
-              latitude: data.location_latitude,
-              longitude: data.location_longitude
-            },
+            ...data,
             provider: data.service_providers ? {
               name: data.service_providers.name,
               phone: data.service_providers.phone,
-              eta: '15 minutes', // This would be calculated based on distance
-              location: {
-                latitude: data.service_providers.latitude,
-                longitude: data.service_providers.longitude
-              }
-            } : undefined,
-            vehicle: {
-              make: data.vehicle_make,
-              model: data.vehicle_model,
-              year: data.vehicle_year,
-              color: data.vehicle_color
-            },
-            created_at: data.created_at,
-            amount: 15000 // This would come from a pricing table or calculation
+              eta: '15 minutes' // This would be calculated based on distance
+            } : undefined
           });
         }
-      } catch (error) {
-        console.error('Error fetching active request:', error);
+      } catch (err) {
+        console.error('Error fetching active request:', err);
+        setError('Failed to fetch service request details');
+      } finally {
+        setIsLoading(false);
       }
     };
     
-    if (user) {
-      fetchActiveRequest();
-    }
+    fetchActiveRequest();
   }, [user]);
 
   const getStatusColor = (status: ServiceRequest['status']) => {
@@ -136,6 +109,14 @@ export default function ServiceTracking() {
       setActiveRequest({ ...activeRequest, status: 'paid' });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   if (!activeRequest) {
     return (
@@ -178,7 +159,7 @@ export default function ServiceTracking() {
                 Location Details
               </h3>
               <div className="space-y-2">
-                <p className="text-sm text-gray-600">{activeRequest.location.address}</p>
+                <p className="text-sm text-gray-600">{activeRequest.location_address}</p>
                 {/* Map component will go here */}
                 <div className="h-48 bg-gray-100 rounded-lg flex items-center justify-center">
                   <p className="text-sm text-gray-500">Map Preview</p>
@@ -193,9 +174,9 @@ export default function ServiceTracking() {
               </h3>
               <div className="space-y-2">
                 <p className="text-sm text-gray-600">
-                  {activeRequest.vehicle.year} {activeRequest.vehicle.make} {activeRequest.vehicle.model}
+                  {activeRequest.vehicle_year} {activeRequest.vehicle_make} {activeRequest.vehicle_model}
                 </p>
-                <p className="text-sm text-gray-600">Color: {activeRequest.vehicle.color}</p>
+                <p className="text-sm text-gray-600">Color: {activeRequest.vehicle_color}</p>
               </div>
             </div>
           </div>
@@ -272,7 +253,6 @@ export default function ServiceTracking() {
             requestId={activeRequest.id}
             amount={activeRequest.amount}
             onSuccess={handlePaymentSuccess}
-            onCancel={() => setShowPayment(false)}
           />
         </div>
       )}

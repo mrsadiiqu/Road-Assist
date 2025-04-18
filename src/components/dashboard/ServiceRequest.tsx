@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { Car, MapPin, Wrench, ArrowRight, Loader2, Plus } from 'lucide-react';
 import { useAppStore } from '../../lib/store';
 import { useAuth } from '../auth/AuthContext';
+import { supabase } from '../../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 const serviceTypes = [
   { id: 'towing', name: 'Towing Service', icon: Car },
@@ -12,61 +14,131 @@ const serviceTypes = [
   { id: 'lockout', name: 'Lockout Service', icon: Wrench }
 ];
 
+interface Location {
+  address: string;
+}
+
+interface Vehicle {
+  make: string;
+  model: string;
+  year: string;
+  color: string;
+}
+
 export default function ServiceRequest() {
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const { createServiceRequest, userVehicles, fetchUserVehicles, isLoading, error } = useAppStore();
+  const { createServiceRequest, userVehicles, fetchUserVehicles, error: storeError, setError } = useAppStore();
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setErrorState] = useState('');
   
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState('');
-  const [location, setLocation] = useState({ address: '', latitude: 0, longitude: 0 });
+  const [location, setLocation] = useState<Location>({ address: '' });
   const [selectedVehicle, setSelectedVehicle] = useState('');
-  const [newVehicle, setNewVehicle] = useState({ make: '', model: '', year: '', color: '' });
+  const [newVehicle, setNewVehicle] = useState<Vehicle>({ make: '', model: '', year: '', color: '' });
 
   useEffect(() => {
-    fetchUserVehicles();
-  }, [fetchUserVehicles]);
+    if (user) {
+      fetchUserVehicles();
+    }
+  }, [user, fetchUserVehicles]);
+
+  useEffect(() => {
+    if (storeError) {
+      setErrorState(storeError);
+    }
+  }, [storeError]);
+
+  const validateStep = (currentStep: number): boolean => {
+    switch (currentStep) {
+      case 1:
+        return !!selectedService;
+      case 2:
+        return !!location.address;
+      case 3:
+        if (selectedVehicle === 'new') {
+          return !!newVehicle.make && !!newVehicle.model && !!newVehicle.year && !!newVehicle.color;
+        }
+        return !!selectedVehicle;
+      default:
+        return false;
+    }
+  };
+
+  const handleNext = () => {
+    if (!validateStep(step)) {
+      setErrorState(`Please complete all required fields in step ${step}`);
+      return;
+    }
+    setErrorState('');
+    setStep(prev => Math.min(prev + 1, 3));
+  };
+
+  const handleBack = () => {
+    setErrorState('');
+    setStep(prev => Math.max(prev - 1, 1));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user) {
+      setErrorState('Please sign in to create a service request');
+      return;
+    }
 
-    const vehicle = selectedVehicle === 'new' ? newVehicle : 
-      userVehicles.find(v => v.id === selectedVehicle);
+    if (!validateStep(step)) {
+      setErrorState('Please complete all required fields');
+      return;
+    }
 
-    if (!vehicle) return;
+    setIsSubmitting(true);
+    setErrorState('');
+    setSuccessMessage('');
 
     try {
-      await createServiceRequest({
+      const vehicle = selectedVehicle === 'new' ? newVehicle : 
+        userVehicles.find(v => v.id === selectedVehicle);
+
+      if (!vehicle) {
+        throw new Error('Please select or add a vehicle');
+      }
+
+      const requestData = {
         user_id: user.id,
         service_type: selectedService,
         status: 'pending',
         location_address: location.address,
-        location_latitude: location.latitude,
-        location_longitude: location.longitude,
         vehicle_make: vehicle.make,
         vehicle_model: vehicle.model,
         vehicle_year: vehicle.year,
         vehicle_color: vehicle.color
-      });
+      };
 
-      // Reset form and show success message
-      setStep(1);
-      setSelectedService('');
-      setLocation({ address: '', latitude: 0, longitude: 0 });
-      setSelectedVehicle('');
-      setNewVehicle({ make: '', model: '', year: '', color: '' });
-    } catch (err) {
+      const createdRequest = await createServiceRequest(requestData);
+      
+      if (createdRequest) {
+        setSuccessMessage('Service request created successfully!');
+        // Reset form
+        setStep(1);
+        setSelectedService('');
+        setLocation({ address: '' });
+        setSelectedVehicle('');
+        setNewVehicle({ make: '', model: '', year: '', color: '' });
+        
+        // Navigate to service tracking after a short delay
+        setTimeout(() => {
+          navigate('/dashboard/tracking');
+        }, 2000);
+      }
+    } catch (err: any) {
       console.error('Error creating service request:', err);
+      setErrorState(err.message || 'Failed to create service request');
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -75,6 +147,12 @@ export default function ServiceRequest() {
       {error && (
         <div className="mb-8 bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
           {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mb-8 bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded">
+          {successMessage}
         </div>
       )}
 
@@ -207,6 +285,7 @@ export default function ServiceRequest() {
                       value={newVehicle.make}
                       onChange={(e) => setNewVehicle({ ...newVehicle, make: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      required
                     />
                   </div>
                   <div>
@@ -216,6 +295,7 @@ export default function ServiceRequest() {
                       value={newVehicle.model}
                       onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      required
                     />
                   </div>
                   <div>
@@ -225,6 +305,7 @@ export default function ServiceRequest() {
                       value={newVehicle.year}
                       onChange={(e) => setNewVehicle({ ...newVehicle, year: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      required
                     />
                   </div>
                   <div>
@@ -234,6 +315,7 @@ export default function ServiceRequest() {
                       value={newVehicle.color}
                       onChange={(e) => setNewVehicle({ ...newVehicle, color: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      required
                     />
                   </div>
                 </div>
@@ -245,23 +327,27 @@ export default function ServiceRequest() {
         <div className="mt-8 flex justify-between">
           {step > 1 && (
             <button
-              onClick={() => setStep(step - 1)}
+              onClick={handleBack}
               className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
             >
               Back
             </button>
           )}
           <button
-            onClick={() => step < 3 ? setStep(step + 1) : handleSubmit}
-            disabled={
-              (step === 1 && !selectedService) ||
-              (step === 2 && !location.address) ||
-              (step === 3 && !selectedVehicle)
-            }
-            className="ml-auto px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={step === 3 ? handleSubmit : handleNext}
+            disabled={isSubmitting}
+            className={`ml-auto px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center ${
+              isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
           >
-            {step === 3 ? 'Submit Request' : 'Next'}
-            <ArrowRight className="ml-2 h-4 w-4" />
+            {isSubmitting ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                {step === 3 ? 'Submit Request' : 'Next'}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </>
+            )}
           </button>
         </div>
       </motion.div>

@@ -18,13 +18,35 @@ interface AppState {
   userVehicles: UserVehicle[];
 
   // Actions
-  createServiceRequest: (request: Omit<ServiceRequest, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  createServiceRequest: (request: Omit<ServiceRequest, 'id' | 'created_at' | 'updated_at'>) => Promise<ServiceRequest>;
   fetchServiceHistory: () => Promise<void>;
   fetchUserProfile: () => Promise<void>;
   fetchUserVehicles: () => Promise<void>;
   updateUserProfile: (profile: Partial<UserProfile>) => Promise<void>;
   addUserVehicle: (vehicle: Omit<UserVehicle, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   deleteUserVehicle: (id: string) => Promise<void>;
+  setError: (error: string | null) => void;
+}
+
+// Add these types and functions to your store
+interface Vehicle {
+  id: string;
+  user_id: string;
+  make: string;
+  model: string;
+  year: string;
+  color: string;
+}
+
+interface ServiceRequest {
+  user_id: string;
+  service_type: string;
+  status: 'pending' | 'accepted' | 'completed' | 'cancelled';
+  location_address: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_year: string;
+  vehicle_color: string;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -36,24 +58,85 @@ export const useAppStore = create<AppState>((set, get) => ({
   userProfile: null,
   userVehicles: [],
 
+  // Error handling
+  setError: (error) => set({ error }),
+
   // Service Request Actions
-  createServiceRequest: async (request) => {
+  createServiceRequest: async (requestData) => {
     set({ isLoading: true, error: null });
     try {
+      // Create the service request
       const { data, error } = await supabase
         .from('service_requests')
-        .insert(request)
+        .insert({
+          user_id: requestData.user_id,
+          service_type: requestData.service_type,
+          status: 'pending',
+          location_address: requestData.location_address,
+          vehicle_make: requestData.vehicle_make,
+          vehicle_model: requestData.vehicle_model,
+          vehicle_year: requestData.vehicle_year,
+          vehicle_color: requestData.vehicle_color
+        })
         .select()
         .single();
 
       if (error) throw error;
       
+      // Update the store state
       set((state) => ({
         activeRequest: data,
-        serviceHistory: [data, ...state.serviceHistory]
+        serviceHistory: [data, ...state.serviceHistory],
+        error: null
       }));
-    } catch (error) {
-      set({ error: (error as Error).message });
+
+      return data;
+    } catch (error: any) {
+      const errorMessage = error.message || 'Failed to create service request';
+      set({ error: errorMessage });
+      throw new Error(errorMessage);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Vehicle Management Actions
+  addUserVehicle: async (vehicle) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('user_vehicles')
+        .insert(vehicle)
+        .select()
+        .single();
+
+      if (error) throw error;
+      set((state) => ({
+        userVehicles: [...state.userVehicles, data]
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  deleteUserVehicle: async (id) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { error } = await supabase
+        .from('user_vehicles')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      set((state) => ({
+        userVehicles: state.userVehicles.filter(v => v.id !== id)
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
     } finally {
       set({ isLoading: false });
     }
@@ -121,56 +204,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchUserVehicles: async () => {
     set({ isLoading: true, error: null });
     try {
-      const { data, error } = await supabase
-        .from('user_vehicles')
+      const { data: vehicles, error } = await supabase
+        .from('vehicles')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      set({ userVehicles: data });
-    } catch (error) {
-      set({ error: (error as Error).message });
+      set({ userVehicles: vehicles });
+    } catch (error: any) {
+      set({ error: error.message });
     } finally {
       set({ isLoading: false });
     }
   },
-
-  addUserVehicle: async (vehicle) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data, error } = await supabase
-        .from('user_vehicles')
-        .insert(vehicle)
-        .select()
-        .single();
-
-      if (error) throw error;
-      set((state) => ({
-        userVehicles: [data, ...state.userVehicles]
-      }));
-    } catch (error) {
-      set({ error: (error as Error).message });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
-  deleteUserVehicle: async (id) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { error } = await supabase
-        .from('user_vehicles')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      set((state) => ({
-        userVehicles: state.userVehicles.filter(v => v.id !== id)
-      }));
-    } catch (error) {
-      set({ error: (error as Error).message });
-    } finally {
-      set({ isLoading: false });
-    }
-  }
 }));

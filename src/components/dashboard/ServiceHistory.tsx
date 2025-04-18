@@ -1,55 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Car, CheckCircle, XCircle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
+import { Clock, Car, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext';
+import { supabase } from '../../lib/supabase';
+import { format } from 'date-fns';
 
 interface ServiceRequest {
   id: string;
   service_type: string;
   status: string;
+  location_address: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_year: string;
+  vehicle_color: string;
   created_at: string;
-  completed_at: string | null;
-  provider_name: string;
-  amount: number;
+  amount?: number;
 }
 
 export default function ServiceHistory() {
+  const { user } = useAuth();
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchServiceHistory();
   }, []);
 
   const fetchServiceHistory = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    if (!user) return;
 
+    try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('service_requests')
-        .select(`
-          id,
-          service_type,
-          status,
-          created_at,
-          completed_at,
-          provider:service_providers(name),
-          amount
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const formattedData = data.map(request => ({
-        ...request,
-        provider_name: request.provider?.name || 'Unknown Provider'
-      }));
-
-      setRequests(formattedData);
-    } catch (error) {
-      console.error('Error fetching service history:', error);
+      if (data) {
+        setRequests(data);
+      }
+    } catch (err) {
+      console.error('Error fetching service history:', err);
+      setError('Failed to fetch service history');
     } finally {
       setLoading(false);
     }
@@ -58,13 +55,13 @@ export default function ServiceHistory() {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed':
-        return 'text-green-600 bg-green-50';
+        return 'bg-green-100 text-green-800';
       case 'cancelled':
-        return 'text-red-600 bg-red-50';
+        return 'bg-red-100 text-red-800';
       case 'in_progress':
-        return 'text-yellow-600 bg-yellow-50';
+        return 'bg-yellow-100 text-yellow-800';
       default:
-        return 'text-gray-600 bg-gray-50';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -83,19 +80,27 @@ export default function ServiceHistory() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-red-600">{error}</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Service History</h1>
       </div>
 
-      <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -104,13 +109,16 @@ export default function ServiceHistory() {
                   Service Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Provider
+                  Vehicle Details
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Location
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Amount
@@ -134,7 +142,12 @@ export default function ServiceHistory() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{request.provider_name}</div>
+                    <div className="text-sm text-gray-900">
+                      {request.vehicle_year} {request.vehicle_make} {request.vehicle_model}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {request.vehicle_color}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
@@ -143,10 +156,13 @@ export default function ServiceHistory() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(request.created_at).toLocaleDateString()}
+                    {format(new Date(request.created_at), 'MMM dd, yyyy HH:mm')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ₦{request.amount.toLocaleString()}
+                    {request.location_address}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {request.amount ? `$${request.amount.toFixed(2)}` : '-'}
                   </td>
                 </motion.tr>
               ))}
