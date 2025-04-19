@@ -33,6 +33,7 @@ import ServiceHistory from './components/dashboard/ServiceHistory';
 import ProviderRequests from './components/provider/ProviderRequests';
 import ProviderEarnings from './components/provider/ProviderEarnings';
 import ProviderProfile from './components/provider/ProviderProfile';
+import PaymentSuccess from './components/payment/PaymentSuccess';
 
 
 function LandingPage() {
@@ -120,6 +121,9 @@ function App() {
             <Route path="settings" element={<AdminSettings />} />
             <Route path="support" element={<AdminSupport />} />
           </Route>
+          
+          {/* Payment Routes */}
+          <Route path="/payment/success" element={<PaymentSuccess />} />
         </Routes>
       </AuthProvider>
     </Router>

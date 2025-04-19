@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Car, MapPin, Wrench, ArrowRight, Loader2, Plus } from 'lucide-react';
+import { Car, Wrench, ArrowRight, Loader2, Plus } from 'lucide-react';
 import { useAppStore } from '../../lib/store';
 import { useAuth } from '../auth/AuthContext';
-import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import PaymentForm from '../payment/PaymentForm';
 
 const serviceTypes = [
-  { id: 'towing', name: 'Towing Service', icon: Car },
-  { id: 'battery', name: 'Battery Jump Start', icon: Wrench },
-  { id: 'tire', name: 'Tire Change', icon: Wrench },
-  { id: 'fuel', name: 'Fuel Delivery', icon: Wrench },
-  { id: 'lockout', name: 'Lockout Service', icon: Wrench }
+  { id: 'towing', name: 'Towing Service', icon: Car, basePrice: 15000 },
+  { id: 'battery', name: 'Battery Jump Start', icon: Wrench, basePrice: 5000 },
+  { id: 'tire', name: 'Tire Change', icon: Wrench, basePrice: 3000 },
+  { id: 'fuel', name: 'Fuel Delivery', icon: Wrench, basePrice: 2000 },
+  { id: 'lockout', name: 'Lockout Service', icon: Wrench, basePrice: 4000 }
 ];
 
 interface Location {
@@ -25,13 +25,29 @@ interface Vehicle {
   color: string;
 }
 
+interface ServiceRequestInput {
+  user_id: string;
+  service_type: string;
+  status: string;
+  location_address: string;
+  location_latitude: number;
+  location_longitude: number;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_year: string;
+  vehicle_color: string;
+  amount: number;
+}
+
 export default function ServiceRequest() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { createServiceRequest, userVehicles, fetchUserVehicles, error: storeError, setError } = useAppStore();
+  const { createServiceRequest, userVehicles, fetchUserVehicles, error: storeError } = useAppStore();
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setErrorState] = useState('');
+  const [showPayment, setShowPayment] = useState(false);
+  const [requestId, setRequestId] = useState<string | null>(null);
   
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState('');
@@ -62,6 +78,8 @@ export default function ServiceRequest() {
           return !!newVehicle.make && !!newVehicle.model && !!newVehicle.year && !!newVehicle.color;
         }
         return !!selectedVehicle;
+      case 4:
+        return !!selectedService && !!location.address && !!selectedVehicle;
       default:
         return false;
     }
@@ -73,12 +91,49 @@ export default function ServiceRequest() {
       return;
     }
     setErrorState('');
-    setStep(prev => Math.min(prev + 1, 3));
+    setStep(prev => Math.min(prev + 1, 4));
   };
 
   const handleBack = () => {
     setErrorState('');
     setStep(prev => Math.max(prev - 1, 1));
+  };
+
+  const calculateAmount = () => {
+    const service = serviceTypes.find(s => s.id === selectedService);
+    return service ? service.basePrice : 0;
+  };
+
+  const handlePaymentSuccess = async () => {
+    try {
+      const requestData: ServiceRequestInput = {
+        user_id: user?.id || '',
+        service_type: selectedService,
+        status: 'pending',
+        location_address: location.address,
+        location_latitude: 0,
+        location_longitude: 0,
+        vehicle_make: selectedVehicle === 'new' ? newVehicle.make : userVehicles.find(v => v.id === selectedVehicle)?.make || '',
+        vehicle_model: selectedVehicle === 'new' ? newVehicle.model : userVehicles.find(v => v.id === selectedVehicle)?.model || '',
+        vehicle_year: selectedVehicle === 'new' ? newVehicle.year : userVehicles.find(v => v.id === selectedVehicle)?.year || '',
+        vehicle_color: selectedVehicle === 'new' ? newVehicle.color : userVehicles.find(v => v.id === selectedVehicle)?.color || '',
+        amount: calculateAmount()
+      };
+
+      const createdRequest = await createServiceRequest(requestData);
+      
+      if (createdRequest) {
+        setSuccessMessage('Service request created successfully!');
+        setTimeout(() => {
+          navigate('/dashboard/tracking');
+        }, 2000);
+      }
+    } catch (err) {
+      console.error('Error creating service request:', err);
+      setErrorState('Failed to create service request');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -98,44 +153,29 @@ export default function ServiceRequest() {
     setSuccessMessage('');
 
     try {
-      const vehicle = selectedVehicle === 'new' ? newVehicle : 
-        userVehicles.find(v => v.id === selectedVehicle);
-
-      if (!vehicle) {
-        throw new Error('Please select or add a vehicle');
-      }
-
-      const requestData = {
+      const requestData: ServiceRequestInput = {
         user_id: user.id,
         service_type: selectedService,
-        status: 'pending',
+        status: 'pending_payment',
         location_address: location.address,
-        vehicle_make: vehicle.make,
-        vehicle_model: vehicle.model,
-        vehicle_year: vehicle.year,
-        vehicle_color: vehicle.color
+        location_latitude: 0,
+        location_longitude: 0,
+        vehicle_make: selectedVehicle === 'new' ? newVehicle.make : userVehicles.find(v => v.id === selectedVehicle)?.make || '',
+        vehicle_model: selectedVehicle === 'new' ? newVehicle.model : userVehicles.find(v => v.id === selectedVehicle)?.model || '',
+        vehicle_year: selectedVehicle === 'new' ? newVehicle.year : userVehicles.find(v => v.id === selectedVehicle)?.year || '',
+        vehicle_color: selectedVehicle === 'new' ? newVehicle.color : userVehicles.find(v => v.id === selectedVehicle)?.color || '',
+        amount: calculateAmount()
       };
 
-      const createdRequest = await createServiceRequest(requestData);
-      
-      if (createdRequest) {
-        setSuccessMessage('Service request created successfully!');
-        // Reset form
-        setStep(1);
-        setSelectedService('');
-        setLocation({ address: '' });
-        setSelectedVehicle('');
-        setNewVehicle({ make: '', model: '', year: '', color: '' });
-        
-        // Navigate to service tracking after a short delay
-        setTimeout(() => {
-          navigate('/dashboard/tracking');
-        }, 2000);
+      const tempRequest = await createServiceRequest(requestData);
+
+      if (tempRequest) {
+        setRequestId(tempRequest.id);
+        setShowPayment(true);
       }
-    } catch (err: any) {
-      console.error('Error creating service request:', err);
-      setErrorState(err.message || 'Failed to create service request');
-    } finally {
+    } catch (err) {
+      console.error('Error creating temporary request:', err);
+      setErrorState('Failed to create service request');
       setIsSubmitting(false);
     }
   };
@@ -160,7 +200,7 @@ export default function ServiceRequest() {
       <div className="mb-8">
         <div className="flex items-center justify-between relative">
           <div className="absolute left-0 right-0 top-1/2 h-1 bg-gray-200 -translate-y-1/2" />
-          {[1, 2, 3].map((number) => (
+          {[1, 2, 3, 4].map((number) => (
             <motion.div
               key={number}
               className={`relative flex items-center justify-center w-10 h-10 rounded-full ${
@@ -179,6 +219,7 @@ export default function ServiceRequest() {
           <span className="text-sm text-gray-600">Service Type</span>
           <span className="text-sm text-gray-600">Location</span>
           <span className="text-sm text-gray-600">Vehicle Details</span>
+          <span className="text-sm text-gray-600">Payment</span>
         </div>
       </div>
 
@@ -324,6 +365,32 @@ export default function ServiceRequest() {
           </div>
         )}
 
+        {step === 4 && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-semibold mb-4">Payment Summary</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Service Type</span>
+                  <span className="font-medium">
+                    {serviceTypes.find(s => s.id === selectedService)?.name}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Amount</span>
+                  <span className="font-medium">₦{calculateAmount().toLocaleString()}</span>
+                </div>
+                <div className="pt-4 border-t">
+                  <div className="flex justify-between">
+                    <span className="text-lg font-semibold">Total</span>
+                    <span className="text-lg font-semibold">₦{calculateAmount().toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mt-8 flex justify-between">
           {step > 1 && (
             <button
@@ -334,7 +401,7 @@ export default function ServiceRequest() {
             </button>
           )}
           <button
-            onClick={step === 3 ? handleSubmit : handleNext}
+            onClick={step === 4 ? handleSubmit : handleNext}
             disabled={isSubmitting}
             className={`ml-auto px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center ${
               isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
@@ -344,13 +411,29 @@ export default function ServiceRequest() {
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
               <>
-                {step === 3 ? 'Submit Request' : 'Next'}
+                {step === 4 ? 'Proceed to Payment' : 'Next'}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </>
             )}
           </button>
         </div>
       </motion.div>
+
+      {showPayment && requestId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <PaymentForm
+              amount={calculateAmount()}
+              requestId={requestId}
+              onSuccess={handlePaymentSuccess}
+              onClose={() => {
+                setShowPayment(false);
+                setIsSubmitting(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

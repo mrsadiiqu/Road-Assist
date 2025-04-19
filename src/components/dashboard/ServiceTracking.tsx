@@ -26,10 +26,12 @@ interface ServiceRequest {
   vehicle_color: string;
   created_at: string;
   amount?: number;
+  provider_id?: string;
   provider?: {
-    name: string;
+    full_name: string;
     phone: string;
-    eta: string;
+    business_name: string;
+    status: string;
   };
 }
 
@@ -51,8 +53,10 @@ export default function ServiceTracking() {
           .select(`
             *,
             service_providers:provider_id (
-              name,
-              phone
+              full_name,
+              phone,
+              business_name,
+              status
             )
           `)
           .eq('user_id', user.id)
@@ -67,9 +71,10 @@ export default function ServiceTracking() {
           setActiveRequest({
             ...data,
             provider: data.service_providers ? {
-              name: data.service_providers.name,
+              full_name: data.service_providers.full_name,
               phone: data.service_providers.phone,
-              eta: '15 minutes' // This would be calculated based on distance
+              business_name: data.service_providers.business_name,
+              status: data.service_providers.status
             } : undefined
           });
         }
@@ -189,7 +194,10 @@ export default function ServiceTracking() {
               </h3>
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-900">{activeRequest.provider.name}</p>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{activeRequest.provider.full_name}</p>
+                    <p className="text-sm text-gray-500">{activeRequest.provider.business_name}</p>
+                  </div>
                   <a
                     href={`tel:${activeRequest.provider.phone}`}
                     className="inline-flex items-center text-sm text-primary-600 hover:text-primary-700"
@@ -199,8 +207,11 @@ export default function ServiceTracking() {
                   </a>
                 </div>
                 <div className="flex items-center text-sm text-gray-600">
-                  <Clock className="h-4 w-4 mr-2 text-gray-400" />
-                  ETA: {activeRequest.provider.eta}
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    activeRequest.provider.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {activeRequest.provider.status === 'active' ? 'Verified' : 'Unverified'}
+                  </span>
                 </div>
               </div>
             </div>

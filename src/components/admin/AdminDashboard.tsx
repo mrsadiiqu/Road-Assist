@@ -1,147 +1,264 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Users, Wrench, CreditCard, AlertTriangle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { 
+  Car, 
+  DollarSign, 
+  Clock, 
+  CheckCircle, 
+  XCircle
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { roleManager } from '../../lib/utils/roleManager';
+import { format } from 'date-fns';
+
+interface ServiceRequest {
+  id: string;
+  service_type: string;
+  status: string;
+  location_address: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_year: string;
+  vehicle_color: string;
+  created_at: string;
+  user_id: string;
+  user_full_name: string;
+  user_email: string;
+  amount?: number;
+}
+
+interface DashboardMetrics {
+  totalRequests: number;
+  activeRequests: number;
+  completedRequests: number;
+  cancelledRequests: number;
+  totalRevenue: number;
+}
 
 export default function AdminDashboard() {
-  const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    activeProviders: 0,
-    pendingVerifications: 0,
-    totalRequests: 0
+  const [loading, setLoading] = useState(true);
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
+    totalRequests: 0,
+    activeRequests: 0,
+    completedRequests: 0,
+    cancelledRequests: 0,
+    totalRevenue: 0
   });
-  const [error, setError] = useState<string | null>(null);
+  const [recentRequests, setRecentRequests] = useState<ServiceRequest[]>([]);
 
   useEffect(() => {
-    // Replace the checkAdminAndFetchStats function
-    const checkAdminAndFetchStats = async () => {
-      try {
-        const role = await roleManager.getCurrentRole();
-        if (role !== 'admin') {
-          navigate('/admin/login');
-          return;
-        }
+    fetchDashboardData();
+  }, []);
 
-        fetchDashboardStats();
-      } catch (err: any) {
-        console.error('Admin verification error:', err);
-        setError(err.message);
-        navigate('/admin/login');
-      }
-    };
-
-    checkAdminAndFetchStats();
-  }, [navigate]);
-
-  async function fetchDashboardStats() {
+  const fetchDashboardData = async () => {
     try {
-      // Fetch total users
-      const { count: usersCount, error: usersError } = await supabase
-        .from('user_profiles')
-        .select('*', { count: 'exact', head: true });
+      setLoading(true);
 
-      if (usersError) throw usersError;
+      const { data, error } = await supabase
+        .rpc('get_service_requests_with_users')
+        .order('created_at', { ascending: false });
 
-      // Fetch active providers
-      const { count: providersCount, error: providersError } = await supabase
-        .from('service_providers')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
+      if (error) throw error;
 
-      if (providersError) throw providersError;
+      if (data) {
+        // Calculate metrics
+        const totalRequests = data.length;
+        const activeRequests = data.filter((r: ServiceRequest) => !['completed', 'cancelled'].includes(r.status)).length;
+        const completedRequests = data.filter((r: ServiceRequest) => r.status === 'completed').length;
+        const cancelledRequests = data.filter((r: ServiceRequest) => r.status === 'cancelled').length;
+        const totalRevenue = data
+          .filter((r: ServiceRequest) => r.status === 'completed')
+          .reduce((sum: number, r: ServiceRequest) => sum + (r.amount || 0), 0);
 
-      // Fetch pending verifications
-      const { count: pendingCount, error: pendingError } = await supabase
-        .from('service_providers')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending_verification');
+        setMetrics({
+          totalRequests,
+          activeRequests,
+          completedRequests,
+          cancelledRequests,
+          totalRevenue
+        });
 
-      if (pendingError) throw pendingError;
-
-      // Fetch total requests
-      const { count: requestsCount, error: requestsError } = await supabase
-        .from('service_requests')
-        .select('*', { count: 'exact', head: true });
-
-      if (requestsError) throw requestsError;
-
-      setStats({
-        totalUsers: usersCount || 0,
-        activeProviders: providersCount || 0,
-        pendingVerifications: pendingCount || 0,
-        totalRequests: requestsCount || 0
-      });
-    } catch (error: any) {
-      console.error('Error fetching dashboard stats:', error);
-      setError(error.message);
+        // Get the 5 most recent requests
+        setRecentRequests(data.slice(0, 5));
+      }
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'in_progress':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return <CheckCircle className="h-5 w-5" />;
+      case 'cancelled':
+        return <XCircle className="h-5 w-5" />;
+      case 'in_progress':
+        return <Clock className="h-5 w-5" />;
+      default:
+        return <Clock className="h-5 w-5" />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6">
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg">
-          {error}
-        </div>
-      )}
-      
-      <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+      </div>
 
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Users</p>
-              <p className="text-2xl font-bold">{stats.totalUsers}</p>
-            </div>
-            <Users className="h-8 w-8 text-blue-600" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Active Providers</p>
-              <p className="text-2xl font-bold">{stats.activeProviders}</p>
-            </div>
-            <Wrench className="h-8 w-8 text-green-600" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Pending Verifications</p>
-              <p className="text-2xl font-bold">{stats.pendingVerifications}</p>
-            </div>
-            <AlertTriangle className="h-8 w-8 text-yellow-600" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-xl shadow-sm p-6"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Requests</p>
-              <p className="text-2xl font-bold">{stats.totalRequests}</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.totalRequests}</p>
             </div>
-            <CreditCard className="h-8 w-8 text-purple-600" />
+            <div className="p-3 bg-primary-100 rounded-lg">
+              <Car className="h-6 w-6 text-primary-600" />
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-xl shadow-sm p-6"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Active Requests</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.activeRequests}</p>
+            </div>
+            <div className="p-3 bg-yellow-100 rounded-lg">
+              <Clock className="h-6 w-6 text-yellow-600" />
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-xl shadow-sm p-6"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Total Revenue</p>
+              <p className="text-2xl font-bold text-gray-900">₦{metrics.totalRevenue.toLocaleString()}</p>
+            </div>
+            <div className="p-3 bg-green-100 rounded-lg">
+              <DollarSign className="h-6 w-6 text-green-600" />
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white rounded-xl shadow-sm p-6"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Completed Requests</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.completedRequests}</p>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <CheckCircle className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Recent Requests */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="bg-white rounded-xl shadow-sm overflow-hidden"
+      >
+        <div className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Service Requests</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    User
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Service Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Vehicle
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {recentRequests.map((request) => (
+                  <tr key={request.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{request.user_full_name}</div>
+                      <div className="text-sm text-gray-500">{request.user_email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{request.service_type}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {request.vehicle_year} {request.vehicle_make} {request.vehicle_model}
+                      </div>
+                      <div className="text-sm text-gray-500">{request.vehicle_color}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                        {getStatusIcon(request.status)}
+                        <span className="ml-1">{request.status}</span>
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {format(new Date(request.created_at), 'MMM dd, yyyy HH:mm')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="font-semibold mb-4">Recent Verifications</h2>
-          {/* Add verification list here */}
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="font-semibold mb-4">Recent Service Requests</h2>
-          {/* Add service requests list here */}
-        </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -2,8 +2,9 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   Users, Settings, Car, CreditCard, 
-  BarChart3, HelpCircle 
+  BarChart3, HelpCircle, LogOut
 } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext';
 
 const navItems = [
   { path: '/admin/dashboard', icon: BarChart3, label: 'Dashboard' },
@@ -15,6 +16,8 @@ const navItems = [
 ];
 
 export default function AdminSidebar() {
+  const { signOut } = useAuth();
+
   return (
     <div className="w-64 bg-white shadow-sm">
       <div className="p-4">
@@ -38,6 +41,15 @@ export default function AdminSidebar() {
           </NavLink>
         ))}
       </nav>
+      <div className="p-4 border-t border-gray-200 mt-auto">
+        <button
+          onClick={signOut}
+          className="flex items-center space-x-3 px-4 py-3 w-full rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50"
+        >
+          <LogOut className="h-5 w-5" />
+          <span className="font-medium">Sign Out</span>
+        </button>
+      </div>
     </div>
   );
 }
