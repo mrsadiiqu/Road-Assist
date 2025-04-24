@@ -2,7 +2,8 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   Users, Settings, Car, CreditCard, 
-  BarChart3, HelpCircle, LogOut
+  BarChart3, HelpCircle, LogOut,
+  MapPin
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 
@@ -11,6 +12,7 @@ const navItems = [
   { path: '/admin/providers', icon: Users, label: 'Service Providers' },
   { path: '/admin/requests', icon: Car, label: 'Service Requests' },
   { path: '/admin/payments', icon: CreditCard, label: 'Payments' },
+  { path: '/admin/stations', icon: MapPin, label: 'Stations' },
   { path: '/admin/settings', icon: Settings, label: 'Settings' },
   { path: '/admin/support', icon: HelpCircle, label: 'Support' },
 ];

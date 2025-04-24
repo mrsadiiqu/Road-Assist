@@ -34,6 +34,7 @@ import ProviderRequests from './components/provider/ProviderRequests';
 import ProviderEarnings from './components/provider/ProviderEarnings';
 import ProviderProfile from './components/provider/ProviderProfile';
 import PaymentSuccess from './components/payment/PaymentSuccess';
+import StationsManagement from './components/admin/StationsManagement';
 
 
 function LandingPage() {
@@ -120,6 +121,7 @@ function App() {
             <Route path="payments" element={<AdminPayments />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="support" element={<AdminSupport />} />
+            <Route path="stations" element={<StationsManagement />} />
           </Route>
           
           {/* Payment Routes */}
