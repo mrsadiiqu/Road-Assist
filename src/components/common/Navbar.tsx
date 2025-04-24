@@ -77,7 +77,7 @@ export default function Navbar() {
           <div className="flex">
             <Link to="/" className="flex-shrink-0 flex items-center space-x-2">
               <Car className="h-8 w-8 text-primary-600" />
-              <span className="text-xl font-bold text-primary-600">Road Assist</span>
+              <span className="text-xl font-bold text-primary-600">TowVo</span>
             </Link>
 
             {/* Desktop Navigation */}

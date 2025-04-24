@@ -10,8 +10,8 @@ const socialLinks = [
 ];
 
 const contactInfo = [
-  { icon: Phone, text: '1-800-ROADHELP', href: 'tel:1-800-ROADHELP' },
-  { icon: Mail, text: 'help@roadassist.com', href: 'mailto:help@roadassist.com' },
+  { icon: Phone, text: '1-800-TOWVO', href: 'tel:1-800-TOWVO' },
+  { icon: Mail, text: 'help@towvo.com', href: 'mailto:help@towvo.com' },
   { icon: MapPin, text: 'Available Nationwide' }
 ];
 
@@ -38,7 +38,7 @@ export default function Footer() {
                 <div className="absolute -inset-1 bg-gradient-to-r from-primary-600 to-primary-400 rounded-full blur opacity-60 group-hover:opacity-100 transition duration-300"></div>
                 <Car className="relative h-8 w-8 text-primary-400 transform group-hover:scale-110 transition-transform duration-300" />
               </div>
-              <span className="text-xl font-bold text-white">RoadAssist</span>
+              <span className="text-xl font-bold text-white">TowVo</span>
             </Link>
             <p className="text-sm text-gray-400">
               Your trusted partner for 24/7 roadside assistance. Professional service when you need it most.
@@ -132,7 +132,7 @@ export default function Footer() {
         <div className="mt-12 pt-8 border-t border-gray-800">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-sm text-gray-400">
-              © {currentYear} RoadAssist. All rights reserved.
+              © {currentYear} TowVo. All rights reserved.
             </p>
             <div className="flex space-x-6">
               <Link
