@@ -79,7 +79,7 @@ export default function About() {
             About TowVO
           </h2>
           <p className="mt-4 text-xl text-gray-600">
-            Your trusted partner for roadside assistance
+            Your trusted partner for professional towing and roadside assistance
           </p>
         </motion.div>
 

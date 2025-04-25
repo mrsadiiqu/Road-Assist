@@ -38,7 +38,9 @@ export default function Footer() {
                 <div className="absolute -inset-1 bg-gradient-to-r from-primary-600 to-primary-400 rounded-full blur opacity-60 group-hover:opacity-100 transition duration-300"></div>
                 <Car className="relative h-8 w-8 text-primary-400 transform group-hover:scale-110 transition-transform duration-300" />
               </div>
+
               <span className="text-xl font-bold text-white">TowVO</span>
+              
             </Link>
             <p className="text-sm text-gray-400">
               Your trusted partner for 24/7 roadside assistance. Professional service when you need it most.
