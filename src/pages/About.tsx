@@ -77,7 +77,7 @@ export default function About() {
             className="text-center"
           >
             <h1 className="text-4xl font-bold mb-6">
-              About RoadAssist
+              About TowVO
             </h1>
             <p className="text-xl text-primary-100 max-w-3xl mx-auto">
               Your trusted partner for reliable roadside assistance services in Abuja and beyond.

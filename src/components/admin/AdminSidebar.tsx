@@ -21,7 +21,7 @@ export default function AdminSidebar() {
   return (
     <div className="w-64 bg-white shadow-sm">
       <div className="p-4">
-        <h1 className="text-xl font-bold text-primary-600">Road Assist Admin</h1>
+        <h1 className="text-xl font-bold text-primary-600">TowVO Admin</h1>
       </div>
       <nav className="mt-4">
         {navItems.map((item) => (
