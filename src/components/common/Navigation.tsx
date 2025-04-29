@@ -111,7 +111,7 @@ export default function Navigation() {
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link to="/" className="text-xl font-bold text-primary-600">
-                TowVo
+                TowVO
               </Link>
             </div>
             {renderNavLinks()}

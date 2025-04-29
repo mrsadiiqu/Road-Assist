@@ -114,7 +114,7 @@ export default function DashboardSidebar({ userRole }: DashboardSidebarProps) {
         <div className="p-6">
           <Link to="/" className="flex items-center space-x-2">
             <Car className="h-8 w-8 text-primary-600" />
-            <span className="text-xl font-bold text-gray-900">RoadAssist</span>
+            <span className="text-xl font-bold text-gray-900">TowVO</span>
           </Link>
         </div>
 

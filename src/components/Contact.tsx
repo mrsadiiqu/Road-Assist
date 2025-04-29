@@ -19,14 +19,14 @@ const contactInfo = [
   {
     icon: Mail,
     title: 'Email',
-    value: 'help@roadassist.com',
-    link: 'mailto:help@roadassist.com',
+    value: 'help@towvo.com',
+    link: 'mailto:help@towvo.com',
     color: 'bg-green-500'
   },
   {
     icon: MapPin,
     title: 'Location',
-    value: 'Available nationwide, 24/7',
+    value: 'Available in Abuja, 24/7',
     color: 'bg-purple-500'
   },
   {

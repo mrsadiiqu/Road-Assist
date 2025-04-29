@@ -76,7 +76,7 @@ export default function About() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
-            About TowVo
+            About TowVO
           </h2>
           <p className="mt-4 text-xl text-gray-600">
             Your trusted partner for professional towing and roadside assistance
