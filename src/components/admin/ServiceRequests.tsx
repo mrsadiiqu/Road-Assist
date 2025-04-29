@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Loader2, UserPlus } from 'lucide-react';
+import { Search, Loader2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import PaymentForm from '../payment/PaymentForm';
 
 interface ServiceRequest {
   id: string;
@@ -19,6 +20,7 @@ interface ServiceRequest {
   provider_id?: string;
   provider_name?: string;
   provider_status?: string;
+  amount: number;
 }
 
 interface ServiceProvider {
@@ -43,6 +45,7 @@ export default function ServiceRequests() {
   const [availableProviders, setAvailableProviders] = useState<ServiceProvider[]>([]);
   const [assigningProvider, setAssigningProvider] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPayment, setShowPayment] = useState(false);
 
   useEffect(() => {
     fetchRequests();
@@ -134,6 +137,21 @@ export default function ServiceRequests() {
     return matchesSearch && matchesStatus;
   });
 
+  const handlePaymentSuccess = async () => {
+    try {
+      if (!selectedRequest) {
+        setError('Invalid request');
+        return;
+      }
+
+      await fetchRequests();
+      setShowPayment(false);
+    } catch (error) {
+      console.error('Error handling payment:', error);
+      setError('Failed to handle payment');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -163,6 +181,18 @@ export default function ServiceRequests() {
           </select>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+          <span className="block sm:inline">{error}</span>
+          <button
+            className="absolute top-0 bottom-0 right-0 px-4 py-3"
+            onClick={() => setError(null)}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
@@ -326,6 +356,21 @@ export default function ServiceRequests() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showPayment && selectedRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <PaymentForm
+              amount={selectedRequest.amount}
+              requestId={selectedRequest.id}
+              onSuccess={handlePaymentSuccess}
+              onClose={() => {
+                setShowPayment(false);
+              }}
+            />
           </div>
         </div>
       )}

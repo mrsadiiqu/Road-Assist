@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Car, Wrench, ArrowRight, Loader2, Plus } from 'lucide-react';
+import { Car, Wrench, ArrowRight, Loader2, Plus, Navigation } from 'lucide-react';
 import { useAppStore } from '../../lib/store';
 import { useAuth } from '../auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import PaymentForm from '../payment/PaymentForm';
+import { getPricingBreakdown } from '../../lib/utils/pricing';
+import { geocodeAddress, getDistanceFromAbuja, Location } from '../../lib/utils/location';
+
 
 const serviceTypes = [
   { id: 'towing', name: 'Towing Service', icon: Car, basePrice: 15000 },
@@ -13,10 +16,6 @@ const serviceTypes = [
   { id: 'fuel', name: 'Fuel Delivery', icon: Wrench, basePrice: 2000 },
   { id: 'lockout', name: 'Lockout Service', icon: Wrench, basePrice: 4000 }
 ];
-
-interface Location {
-  address: string;
-}
 
 interface Vehicle {
   make: string;
@@ -51,9 +50,20 @@ export default function ServiceRequest() {
   
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState('');
-  const [location, setLocation] = useState<Location>({ address: '' });
+  const [location, setLocation] = useState<Location>({ address: '', lat: 0, lng: 0 });
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [newVehicle, setNewVehicle] = useState<Vehicle>({ make: '', model: '', year: '', color: '' });
+  const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
+  const [distance, setDistance] = useState<number>(0);
+  const [pricingBreakdown, setPricingBreakdown] = useState<{
+    baseFee: number;
+    distanceFee: number;
+    serviceFee: number;
+    total: number;
+  } | null>(null);
+
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -66,6 +76,13 @@ export default function ServiceRequest() {
       setErrorState(storeError);
     }
   }, [storeError]);
+
+  useEffect(() => {
+    if (selectedService && distance > 0) {
+      const breakdown = getPricingBreakdown(selectedService, distance);
+      setPricingBreakdown(breakdown);
+    }
+  }, [selectedService, distance]);
 
   const validateStep = (currentStep: number): boolean => {
     switch (currentStep) {
@@ -99,40 +116,90 @@ export default function ServiceRequest() {
     setStep(prev => Math.max(prev - 1, 1));
   };
 
-  const calculateAmount = () => {
-    const service = serviceTypes.find(s => s.id === selectedService);
-    return service ? service.basePrice : 0;
+  const getCurrentLocation = () => {
+    setIsGettingLocation(true);
+    setLocationError('');
+
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by your browser');
+      setIsGettingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`
+          );
+          
+          if (!response.ok) {
+            throw new Error('Failed to get address');
+          }
+
+          const data = await response.json();
+          
+          const newLocation: Location = {
+            address: data.display_name,
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+
+          setLocation(newLocation);
+          
+          const calculatedDistance = await getDistanceFromAbuja(newLocation);
+          setDistance(calculatedDistance);
+
+          if (selectedService) {
+            const breakdown = getPricingBreakdown(selectedService, calculatedDistance);
+            setPricingBreakdown(breakdown);
+          }
+        } catch {
+          setLocationError('Failed to get your address. Please enter it manually.');
+        } finally {
+          setIsGettingLocation(false);
+        }
+      },
+      (error) => {
+        setLocationError(
+          error.code === 1
+            ? 'Please allow location access to automatically detect your location.'
+            : 'Failed to get your location. Please try again or enter manually.'
+        );
+        setIsGettingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+      }
+    );
   };
 
-  const handlePaymentSuccess = async () => {
-    try {
-      const requestData: ServiceRequestInput = {
-        user_id: user?.id || '',
-        service_type: selectedService,
-        status: 'pending',
-        location_address: location.address,
-        location_latitude: 0,
-        location_longitude: 0,
-        vehicle_make: selectedVehicle === 'new' ? newVehicle.make : userVehicles.find(v => v.id === selectedVehicle)?.make || '',
-        vehicle_model: selectedVehicle === 'new' ? newVehicle.model : userVehicles.find(v => v.id === selectedVehicle)?.model || '',
-        vehicle_year: selectedVehicle === 'new' ? newVehicle.year : userVehicles.find(v => v.id === selectedVehicle)?.year || '',
-        vehicle_color: selectedVehicle === 'new' ? newVehicle.color : userVehicles.find(v => v.id === selectedVehicle)?.color || '',
-        amount: calculateAmount()
-      };
+  const handleLocationSubmit = async () => {
+    if (!location.address) {
+      setErrorState('Please enter a location');
+      return;
+    }
 
-      const createdRequest = await createServiceRequest(requestData);
-      
-      if (createdRequest) {
-        setSuccessMessage('Service request created successfully!');
-        setTimeout(() => {
-          navigate('/dashboard/tracking');
-        }, 2000);
-      }
-    } catch (err) {
-      console.error('Error creating service request:', err);
-      setErrorState('Failed to create service request');
+    setIsCalculatingDistance(true);
+    setErrorState('');
+
+    try {
+      const geocodedLocation = await geocodeAddress(location.address);
+      setLocation(geocodedLocation);
+
+      const calculatedDistance = await getDistanceFromAbuja(geocodedLocation);
+      setDistance(calculatedDistance);
+
+      const breakdown = getPricingBreakdown(selectedService, calculatedDistance);
+      setPricingBreakdown(breakdown);
+
+      handleNext();
+    } catch {
+      setErrorState('Failed to calculate distance. Please try again.');
     } finally {
-      setIsSubmitting(false);
+      setIsCalculatingDistance(false);
     }
   };
 
@@ -158,13 +225,13 @@ export default function ServiceRequest() {
         service_type: selectedService,
         status: 'pending_payment',
         location_address: location.address,
-        location_latitude: 0,
-        location_longitude: 0,
+        location_latitude: location.lat,
+        location_longitude: location.lng,
         vehicle_make: selectedVehicle === 'new' ? newVehicle.make : userVehicles.find(v => v.id === selectedVehicle)?.make || '',
         vehicle_model: selectedVehicle === 'new' ? newVehicle.model : userVehicles.find(v => v.id === selectedVehicle)?.model || '',
         vehicle_year: selectedVehicle === 'new' ? newVehicle.year : userVehicles.find(v => v.id === selectedVehicle)?.year || '',
         vehicle_color: selectedVehicle === 'new' ? newVehicle.color : userVehicles.find(v => v.id === selectedVehicle)?.color || '',
-        amount: calculateAmount()
+        amount: pricingBreakdown?.total || 0
       };
 
       const tempRequest = await createServiceRequest(requestData);
@@ -173,9 +240,38 @@ export default function ServiceRequest() {
         setRequestId(tempRequest.id);
         setShowPayment(true);
       }
-    } catch (err) {
-      console.error('Error creating temporary request:', err);
+    } catch {
       setErrorState('Failed to create service request');
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    try {
+      if (!requestId) return;
+
+      const requestData: ServiceRequestInput = {
+        user_id: user?.id || '',
+        service_type: selectedService,
+        status: 'pending',
+        location_address: location.address,
+        location_latitude: location.lat,
+        location_longitude: location.lng,
+        vehicle_make: selectedVehicle === 'new' ? newVehicle.make : userVehicles.find(v => v.id === selectedVehicle)?.make || '',
+        vehicle_model: selectedVehicle === 'new' ? newVehicle.model : userVehicles.find(v => v.id === selectedVehicle)?.model || '',
+        vehicle_year: selectedVehicle === 'new' ? newVehicle.year : userVehicles.find(v => v.id === selectedVehicle)?.year || '',
+        vehicle_color: selectedVehicle === 'new' ? newVehicle.color : userVehicles.find(v => v.id === selectedVehicle)?.color || '',
+        amount: pricingBreakdown?.total || 0
+      };
+
+      await createServiceRequest(requestData);
+      setSuccessMessage('Service request created successfully!');
+      setTimeout(() => {
+        navigate('/dashboard/tracking');
+      }, 2000);
+    } catch {
+      setErrorState('Failed to create service request');
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -256,20 +352,68 @@ export default function ServiceRequest() {
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700">Location</label>
-              <input
-                type="text"
-                placeholder="Enter your location"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                value={location.address}
-                onChange={(e) => setLocation({ ...location, address: e.target.value })}
-              />
-            </div>
-            <div className="h-64 bg-gray-100 rounded-lg">
-              {/* Map Component will go here */}
-              <div className="flex items-center justify-center h-full text-gray-500">
-                Map Preview
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Navigation className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={location.address}
+                      onChange={(e) => setLocation({ ...location, address: e.target.value })}
+                      className="block w-full pl-10 pr-4 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Enter your location"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={getCurrentLocation}
+                    disabled={isGettingLocation}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                  >
+                    {isGettingLocation ? (
+                      <Loader2 className="animate-spin h-5 w-5" />
+                    ) : (
+                      <>
+                        <Navigation className="h-5 w-5 mr-2" />
+                        Current Location
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
+              {locationError && (
+                <p className="mt-2 text-sm text-red-600">{locationError}</p>
+              )}
             </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleLocationSubmit}
+                disabled={!location.address || isCalculatingDistance}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+              >
+                {isCalculatingDistance ? (
+                  <Loader2 className="animate-spin h-5 w-5" />
+                ) : (
+                  'Calculate Distance'
+                )}
+              </button>
+            </div>
+
+            {distance > 0 && pricingBreakdown && (
+              <div className="bg-gray-50 p-4 rounded-md">
+                <p className="text-sm text-gray-600">
+                  Distance from Abuja: {distance.toFixed(1)} km
+                </p>
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm text-gray-600">Base Fee: ₦{pricingBreakdown.baseFee?.toLocaleString() || '0'}</p>
+                  <p className="text-sm text-gray-600">Service Fee: ₦{pricingBreakdown.serviceFee?.toLocaleString() || '0'}</p>
+                  <p className="text-sm text-gray-600">Distance Fee: ₦{pricingBreakdown.distanceFee?.toLocaleString() || '0'}</p>
+                  <p className="text-sm font-medium text-gray-900">Total: ₦{pricingBreakdown.total?.toLocaleString() || '0'}</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -377,15 +521,35 @@ export default function ServiceRequest() {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Amount</span>
-                  <span className="font-medium">₦{calculateAmount().toLocaleString()}</span>
+                  <span className="text-gray-600">Distance from Abuja</span>
+                  <span className="font-medium">{distance.toFixed(1)} km</span>
                 </div>
-                <div className="pt-4 border-t">
-                  <div className="flex justify-between">
-                    <span className="text-lg font-semibold">Total</span>
-                    <span className="text-lg font-semibold">₦{calculateAmount().toLocaleString()}</span>
-                  </div>
-                </div>
+                {pricingBreakdown && (
+                  <>
+                    <div className="border-t pt-4 mt-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Base Fee</span>
+                          <span className="font-medium">₦{pricingBreakdown.baseFee?.toLocaleString() || '0'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Distance Fee</span>
+                          <span className="font-medium">₦{pricingBreakdown.distanceFee?.toLocaleString() || '0'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Service Fee</span>
+                          <span className="font-medium">₦{pricingBreakdown.serviceFee?.toLocaleString() || '0'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="border-t pt-4 mt-4">
+                      <div className="flex justify-between">
+                        <span className="text-lg font-semibold">Total Amount</span>
+                        <span className="text-lg font-semibold text-primary-600">₦{pricingBreakdown.total?.toLocaleString() || '0'}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -423,13 +587,16 @@ export default function ServiceRequest() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg max-w-md w-full">
             <PaymentForm
-              amount={calculateAmount()}
+              amount={pricingBreakdown?.total || 0}
               requestId={requestId}
               onSuccess={handlePaymentSuccess}
               onClose={() => {
                 setShowPayment(false);
                 setIsSubmitting(false);
               }}
+              breakdown={pricingBreakdown || undefined}
+              serviceType={serviceTypes.find(s => s.id === selectedService)?.name}
+              distance={distance}
             />
           </div>
         </div>
